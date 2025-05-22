@@ -204,6 +204,20 @@ public class YouTubeDownloadDialog extends DialogFragment {
                                                      "if(submitBtn) {" +
                                                      "  console.log('Submit button found');" +
                                                      "  submitBtn.click();" +
+                                                     "  " +
+                                                     "  // Set up a timer to look for the download button" +
+                                                     "  var checkInterval = setInterval(function() {" +
+                                                     "    var downloadButtons = document.querySelectorAll('button[type=\"button\"]');" +
+                                                     "    for (var i = 0; i < downloadButtons.length; i++) {" +
+                                                     "      var btn = downloadButtons[i];" +
+                                                     "      if (btn.innerText === 'Download') {" +
+                                                     "        console.log('Found download button, clicking automatically');" +
+                                                     "        btn.click();" +
+                                                     "        clearInterval(checkInterval);" +
+                                                     "        return;" +
+                                                     "      }" +
+                                                     "    }" +
+                                                     "  }, 1000);" +
                                                      "} else {" +
                                                      "  console.log('Submit button not found');" +
                                                      "}" +
@@ -213,12 +227,12 @@ public class YouTubeDownloadDialog extends DialogFragment {
                                     });
                                     
                                     // Keep the button visible for additional attempts
-                                    Toast.makeText(getContext(), "Conversion démarrée, attendez le lien de téléchargement", Toast.LENGTH_LONG).show();
+                                    Toast.makeText(getContext(), "Conversion démarrée, attendez le téléchargement automatique", Toast.LENGTH_LONG).show();
                                 });
                                 
                                 // Add a manual download instruction
                                 TextView instructionText = new TextView(getContext());
-                                instructionText.setText("Si le téléchargement ne démarre pas automatiquement, cliquez sur le lien de téléchargement qui apparaîtra.");
+                                instructionText.setText("Cliquez sur le bouton ci-dessous pour démarrer la conversion. Le téléchargement commencera automatiquement.");
                                 instructionText.setTextColor(Color.BLACK);
                                 instructionText.setPadding(32, 16, 32, 16);
                                 instructionText.setGravity(Gravity.CENTER);
