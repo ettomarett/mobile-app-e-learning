@@ -206,7 +206,7 @@ public class LLMRepository {
             "    durationMinutes: [Section duration in minutes]\n" +
             "    orderIndex: [Order in course, starting from 0]\n" +
             "    content: [HTML content with <p> tags]\n" +
-            "    videoUrl: [YouTube video URL]\n" +
+            "    videoUrl: [IMPORTANT: You must provide an actual, relevant YouTube video URL. Do not use placeholders. Search for and include real, educational YouTube videos that match the section's content. The URL must start with 'https://www.youtube.com/' or 'https://youtu.be/']\n" +
             "  </Section>\n" +
             "  \n" +
             "  [Additional sections...]\n" +
@@ -227,7 +227,11 @@ public class LLMRepository {
             "  </Quiz>\n" +
             "</FirebaseCourse>\n\n" +
             "When you receive a request to create course content, generate the full course structure following this syntax. " +
-            "IMPORTANT: Each section must have a corresponding quiz with at least 3 questions."
+            "IMPORTANT RULES:\n" +
+            "1. Each section must have a corresponding quiz with at least 3 questions\n" +
+            "2. All videoUrl fields MUST contain actual, relevant YouTube video URLs - NO PLACEHOLDERS ALLOWED\n" +
+            "3. Before including a video URL, verify that it exists and is relevant to the section content\n" +
+            "4. If you cannot find a relevant video for a section, you must search harder or modify the section to match available educational content"
         );
         messagesArray.add(systemMessage);
         

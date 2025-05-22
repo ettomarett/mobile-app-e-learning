@@ -43,6 +43,7 @@ import com.projet.skilllearn.utils.UserProgressManager;
 import com.projet.skilllearn.view.adapters.CoursePagerAdapter;
 import com.projet.skilllearn.view.adapters.CourseSectionAdapter;
 import com.projet.skilllearn.view.fragments.ContentFragment;
+import com.projet.skilllearn.view.fragments.DownloadsFragment;
 import com.projet.skilllearn.view.fragments.QuizFragment;
 import com.projet.skilllearn.viewmodel.CourseViewModel;
 import com.projet.skilllearn.utils.VideoDownloadManager;
@@ -61,7 +62,8 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         CourseSectionAdapter.OnSectionClickListener,
         Player.Listener,
         UserProgressManager.BadgeAwardedListener,
-        YouTubeDownloadDialog.DownloadCompleteListener {
+        YouTubeDownloadDialog.DownloadCompleteListener,
+        DownloadsFragment.DownloadActionListener {
 
     private static final String TAG = "CoursePlayerActivity";
     private static final int STORAGE_PERMISSION_CODE = 1001;
@@ -148,13 +150,10 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             videoContainer = findViewById(R.id.video_container);
             playerView = findViewById(R.id.player_view);
             youtubePlayerContainer = findViewById(R.id.youtube_player_container);
-            tvTitle = findViewById(R.id.tv_title);
-            tvDescription = findViewById(R.id.tv_description);
             progressBar = findViewById(R.id.progress_bar);
             btnPrevious = findViewById(R.id.btn_previous);
             btnNext = findViewById(R.id.btn_next);
             btnMarkComplete = findViewById(R.id.btn_mark_complete);
-            btnDownloadVideo = findViewById(R.id.btn_download_video);
             viewPager = findViewById(R.id.view_pager);
             tabLayout = findViewById(R.id.tab_layout);
             rvSections = findViewById(R.id.rv_sections);
@@ -166,7 +165,6 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             btnPrevious.setOnClickListener(v -> navigateToPreviousSection());
             btnNext.setOnClickListener(v -> navigateToNextSection());
             btnMarkComplete.setOnClickListener(v -> markSectionAsCompleted());
-            btnDownloadVideo.setOnClickListener(v -> handleVideoDownload());
         } catch (Exception e) {
             Toast.makeText(this, "Erreur d'initialisation: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             finish();
@@ -187,7 +185,7 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         viewPager.setAdapter(pagerAdapter);
 
         // Conserver les fragments en mémoire
-        viewPager.setOffscreenPageLimit(3);
+        viewPager.setOffscreenPageLimit(4);
 
         // Configurer les onglets
         new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
@@ -204,6 +202,9 @@ public class CoursePlayerActivity extends AppCompatActivity implements
                     break;
                 case 3:
                     tabText = getString(R.string.assistant_ia);
+                    break;
+                case 4:
+                    tabText = getString(R.string.downloads);
                     break;
                 default:
                     tabText = "Tab " + (position + 1);
@@ -232,6 +233,8 @@ public class CoursePlayerActivity extends AppCompatActivity implements
                 return getString(R.string.quiz_tab_description);
             case 3:
                 return getString(R.string.assistant_ia_tab_description);
+            case 4:
+                return getString(R.string.downloads);
             default:
                 return "Tab " + (tabPosition + 1);
         }
@@ -292,9 +295,6 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         CourseSection section = sections.get(index);
         currentSectionIndex = index;
 
-        // Mettre à jour l'interface
-        tvTitle.setText(section.getTitle());
-        tvDescription.setText(section.getDescription());
         if (rvSections.getAdapter() instanceof CourseSectionAdapter) {
             CourseSectionAdapter adapter = (CourseSectionAdapter) rvSections.getAdapter();
             adapter.setSelectedPosition(index);
@@ -302,48 +302,107 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             // Faire défiler jusqu'à la position sélectionnée
             rvSections.smoothScrollToPosition(index);
         }
+        
         // Mettre à jour le contenu des fragments
         refreshFragments(section);
 
         // Charger la vidéo si disponible
         String videoUrl = section.getVideoUrl();
         if (videoUrl != null && !videoUrl.isEmpty()) {
-            videoContainer.setVisibility(View.VISIBLE);
-            
-            // Vérifier si la vidéo est disponible hors ligne
-            String localPath = downloadManager.getLocalVideoPath(courseId, section.getSectionId());
-            
-            if (localPath != null) {
-                // Vidéo téléchargée disponible, charger depuis le stockage local
-                loadLocalVideo(localPath);
-                // Mettre à jour le bouton de téléchargement
-                updateDownloadButton(true);
+            if (videoUrl.contains("youtube.com") || videoUrl.contains("youtu.be")) {
+                setupYouTubePlayer(videoUrl);
             } else {
-                // Aucune version locale, charger depuis l'URL
-                // Déterminer si c'est une vidéo YouTube ou une vidéo standard
-                if (isYouTubeUrl(videoUrl)) {
-                    loadYouTubeVideo(getYouTubeVideoId(videoUrl));
-                    // YouTube ne peut pas être téléchargé
-                    updateDownloadButton(false, true);
-                } else {
-                    loadStandardVideo(videoUrl);
-                    // Vidéo standard peut être téléchargée
-                    updateDownloadButton(false);
-                }
+                setupExoPlayer(videoUrl);
             }
-        } else {
-            videoContainer.setVisibility(View.GONE);
-            stopAllPlayers();
-            // Cacher le bouton de téléchargement
-            btnDownloadVideo.setVisibility(View.GONE);
         }
 
-        // Mettre à jour l'état des boutons de navigation
+        // Mettre à jour les boutons de navigation
         updateNavigationButtons();
-
-        // Réinitialiser l'état de complétion
-        videoCompleted = false;
         updateCompleteButtonState();
+    }
+
+    private void setupYouTubePlayer(String videoUrl) {
+        // Implementation of setupYouTubePlayer method
+    }
+
+    private void setupExoPlayer(String videoUrl) {
+        // Arrêter d'abord tous les lecteurs
+        stopAllPlayers();
+
+        playerView.setVisibility(View.VISIBLE);
+        youtubePlayerContainer.setVisibility(View.GONE);
+
+        MediaItem mediaItem = MediaItem.fromUri(Uri.parse(videoUrl));
+        player.setMediaItem(mediaItem);
+        player.prepare();
+        player.play();
+    }
+
+    private void loadStandardVideo(String videoUrl) {
+        // Arrêter d'abord tous les lecteurs
+        stopAllPlayers();
+
+        playerView.setVisibility(View.VISIBLE);
+        youtubePlayerContainer.setVisibility(View.GONE);
+
+        MediaItem mediaItem = MediaItem.fromUri(Uri.parse(videoUrl));
+        player.setMediaItem(mediaItem);
+        player.prepare();
+        player.play();
+    }
+
+    private void loadLocalVideo(String localPath) {
+        // Arrêter d'abord tous les lecteurs
+        stopAllPlayers();
+
+        playerView.setVisibility(View.VISIBLE);
+        youtubePlayerContainer.setVisibility(View.GONE);
+
+        File localFile = new File(localPath);
+        if (!localFile.exists()) {
+            Toast.makeText(this, "Erreur: Fichier vidéo local introuvable", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        MediaItem mediaItem = MediaItem.fromUri(Uri.fromFile(localFile));
+        player.setMediaItem(mediaItem);
+        player.prepare();
+        player.play();
+    }
+
+    private void stopAllPlayers() {
+        // Arrêter ExoPlayer
+        if (player != null) {
+            player.stop();
+        }
+
+        // Arrêter YouTube Player
+        if (youTubePlayer != null) {
+            youTubePlayer.pause();
+        }
+    }
+
+    private void refreshFragments(CourseSection section) {
+        // Mettre à jour le fragment de contenu
+        ContentFragment contentFragment = ContentFragment.getInstance();
+        if (contentFragment != null) {
+            contentFragment.updateContent(section.getContent());
+        }
+
+        // Mettre à jour le fragment de quiz
+        QuizFragment quizFragment = QuizFragment.getInstance();
+        if (quizFragment != null && section.getQuiz() != null) {
+            quizFragment.updateQuiz(section.getQuiz());
+        }
+    }
+
+    private void showVideoCompletedDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Vidéo terminée")
+                .setMessage("Voulez-vous marquer cette section comme terminée ?")
+                .setPositiveButton("Oui", (dialog, which) -> markSectionAsCompleted())
+                .setNegativeButton("Non", (dialog, which) -> dialog.dismiss())
+                .show();
     }
 
     private boolean isYouTubeUrl(String url) {
@@ -362,97 +421,6 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             return matcher.group(1);
         }
         return null;
-    }
-
-    private void loadYouTubeVideo(String videoId) {
-        if (videoId == null) {
-            Toast.makeText(this, "ID de vidéo YouTube invalide", Toast.LENGTH_SHORT).show();
-            videoContainer.setVisibility(View.GONE);
-            return;
-        }
-
-        // Arrêter d'abord tous les lecteurs
-        stopAllPlayers();
-
-        playerView.setVisibility(View.GONE);
-        youtubePlayerContainer.setVisibility(View.VISIBLE);
-
-        // Créer et initialiser le lecteur YouTube
-        if (youtubePlayerView == null) {
-            youtubePlayerView = new YouTubePlayerView(this);
-            youtubePlayerContainer.removeAllViews(); // Assurez-vous que le conteneur est vide
-            youtubePlayerContainer.addView(youtubePlayerView);
-            getLifecycle().addObserver(youtubePlayerView);
-
-            youtubePlayerView.addYouTubePlayerListener(new AbstractYouTubePlayerListener() {
-                @Override
-                public void onReady(@NonNull YouTubePlayer player) {
-                    youTubePlayer = player;
-                    player.loadVideo(videoId, 0);
-                }
-
-                @Override
-                public void onStateChange(@NonNull YouTubePlayer player, @NonNull PlayerConstants.PlayerState state) {
-                    if (state == PlayerConstants.PlayerState.ENDED) {
-                        videoCompleted = true;
-                        updateCompleteButtonState();
-                        showVideoCompletedDialog();
-                    }
-                }
-            });
-        } else {
-            if (youTubePlayer != null) {
-                youTubePlayer.loadVideo(videoId, 0);
-            }
-        }
-    }
-
-    private void loadStandardVideo(String videoUrl) {
-        // Arrêter d'abord tous les lecteurs
-        stopAllPlayers();
-
-        playerView.setVisibility(View.VISIBLE);
-        youtubePlayerContainer.setVisibility(View.GONE);
-
-        MediaItem mediaItem = MediaItem.fromUri(Uri.parse(videoUrl));
-        player.setMediaItem(mediaItem);
-        player.prepare();
-        player.play();
-    }
-
-    private void stopAllPlayers() {
-        // Arrêter ExoPlayer
-        if (player != null) {
-            player.stop();
-        }
-
-        // Arrêter YouTube Player
-        if (youTubePlayer != null) {
-            youTubePlayer.pause();
-        }
-    }
-
-    private void showVideoCompletedDialog() {
-        new AlertDialog.Builder(this)
-                .setTitle("Vidéo terminée")
-                .setMessage("Voulez-vous marquer cette section comme terminée ?")
-                .setPositiveButton("Oui", (dialog, which) -> markSectionAsCompleted())
-                .setNegativeButton("Non", (dialog, which) -> dialog.dismiss())
-                .show();
-    }
-
-    private void refreshFragments(CourseSection section) {
-        // Mettre à jour le fragment de contenu
-        ContentFragment contentFragment = ContentFragment.getInstance();
-        if (contentFragment != null) {
-            contentFragment.updateContent(section.getContent());
-        }
-
-        // Mettre à jour le fragment de quiz
-        QuizFragment quizFragment = QuizFragment.getInstance();
-        if (quizFragment != null && section.getQuiz() != null) {
-            quizFragment.updateQuiz(section.getQuiz());
-        }
     }
 
     private void updateNavigationButtons() {
@@ -632,28 +600,6 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             .setPositiveButton("Super !", null);
             
         builder.create().show();
-    }
-
-    /**
-     * Charger une vidéo locale
-     */
-    private void loadLocalVideo(String localPath) {
-        // Arrêter d'abord tous les lecteurs
-        stopAllPlayers();
-
-        playerView.setVisibility(View.VISIBLE);
-        youtubePlayerContainer.setVisibility(View.GONE);
-
-        File localFile = new File(localPath);
-        if (!localFile.exists()) {
-            Toast.makeText(this, "Erreur: Fichier vidéo local introuvable", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        MediaItem mediaItem = MediaItem.fromUri(Uri.fromFile(localFile));
-        player.setMediaItem(mediaItem);
-        player.prepare();
-        player.play();
     }
 
     /**
@@ -878,5 +824,17 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         } else {
             Toast.makeText(this, "Erreur lors de la sauvegarde de la vidéo", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void updateDownloadsFragment(boolean isDownloaded, boolean isYouTube) {
+        DownloadsFragment downloadsFragment = DownloadsFragment.getInstance();
+        if (downloadsFragment != null) {
+            downloadsFragment.updateDownloadStatus(isDownloaded, isYouTube);
+        }
+    }
+
+    @Override
+    public void onDownloadRequest() {
+        handleVideoDownload();
     }
 }

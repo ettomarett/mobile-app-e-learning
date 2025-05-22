@@ -106,5 +106,16 @@
     <string name="delete_video">Supprimer la vidéo</string>
     <string name="placeholder_video">Vignette de la vidéo</string>
 
+    <!-- Add new strings for downloads feature -->
+    <string name="download_title">Téléchargement de la vidéo</string>
+    <string name="download_video_info">Téléchargez cette vidéo pour la regarder hors ligne, même sans connexion internet.</string>
+    <string name="youtube_video_info">Téléchargez cette vidéo YouTube pour un accès hors ligne.</string>
+    <string name="video_downloaded">Cette vidéo est disponible hors ligne. Vous pouvez la supprimer pour libérer de l\'espace.</string>
+    <string name="youtube_video_downloaded">Cette vidéo YouTube est disponible hors ligne. Vous pouvez la supprimer pour libérer de l\'espace.</string>
+    <string name="download_for_offline">Télécharger pour regarder hors ligne</string>
+    <string name="download_youtube_video">Télécharger vidéo YouTube</string>
+    <string name="delete_offline_video">Supprimer la vidéo hors ligne</string>
+    <string name="downloading">Téléchargement en cours...</string>
+
 </resources>
 

@@ -43,41 +43,14 @@
             android:visibility="gone" />
     </FrameLayout>
 
-    <androidx.cardview.widget.CardView
-        android:id="@+id/course_info_card"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_sections"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="12dp"
-        android:layout_marginTop="12dp"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="2dp"
-        app:layout_constraintTop_toBottomOf="@id/video_container">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="12dp">
-
-            <TextView
-                android:id="@+id/tv_title"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/colorTextPrimary"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                tools:text="Introduction au développement Android" />
-
-            <TextView
-                android:id="@+id/tv_description"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textColor="@color/colorTextSecondary"
-                android:textSize="14sp"
-                tools:text="Dans cette section, vous apprendrez les bases du développement d'applications Android." />
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
+        android:clipToPadding="false"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp"
+        app:layout_constraintTop_toBottomOf="@id/video_container" />
 
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tab_layout"
@@ -87,7 +60,7 @@
         android:background="@color/colorSurface"
         android:contentDescription="@string/navigation_tabs"
         android:elevation="2dp"
-        app:layout_constraintTop_toBottomOf="@id/course_info_card"
+        app:layout_constraintTop_toBottomOf="@id/video_container"
         app:tabGravity="fill"
         app:tabIndicatorColor="@color/colorPrimary"
         app:tabIndicatorHeight="3dp"
@@ -101,117 +74,76 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="2dp"
-        app:layout_constraintBottom_toTopOf="@id/download_btn_container"
+        app:layout_constraintBottom_toTopOf="@id/navigation_controls"
         app:layout_constraintTop_toBottomOf="@id/tab_layout" />
 
-    <FrameLayout
-        android:id="@+id/download_btn_container"
+    <LinearLayout
+        android:id="@+id/navigation_controls"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/colorSurface"
-        android:elevation="4dp"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="8dp"
-        app:layout_constraintBottom_toTopOf="@id/sections_container">
-
-        <Button
-            android:id="@+id/btn_download_video"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:drawableStart="@drawable/ic_download"
-            android:drawablePadding="8dp"
-            android:text="Télécharger vidéo YouTube"
-            android:textAllCaps="false" />
-    </FrameLayout>
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/sections_container"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginVertical="12dp"
         android:background="@color/colorSurface"
         android:elevation="8dp"
-        android:paddingBottom="8dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingVertical="8dp"
         app:layout_constraintBottom_toBottomOf="parent">
 
-        <View
-            android:id="@+id/sections_divider"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/colorDivider"
-            app:layout_constraintTop_toTopOf="parent" />
+        <Button
+            android:id="@+id/btn_previous"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="@string/previous_section"
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            app:cornerRadius="24dp"
+            app:icon="@drawable/ic_previous"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/colorPrimary"
+            app:strokeColor="@color/colorPrimary" />
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_sections"
-            android:layout_width="match_parent"
-            android:layout_height="80dp"
-            android:clipToPadding="false"
-            android:orientation="horizontal"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="8dp"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            app:layout_constraintTop_toBottomOf="@id/sections_divider"
-            tools:listitem="@layout/item_course_section_horizontal" />
-
-        <LinearLayout
-            android:id="@+id/navigation_controls"
-            android:layout_width="match_parent"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_mark_complete"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="4dp"
-            android:gravity="center"
-            android:orientation="horizontal"
-            app:layout_constraintTop_toBottomOf="@id/rv_sections">
+            android:layout_weight="1"
+            android:text="@string/mark_complete"
+            android:textAllCaps="false"
+            app:cornerRadius="8dp"
+            app:iconGravity="textStart"
+            app:iconPadding="8dp" />
 
-            <Button
-                android:id="@+id/btn_previous"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:contentDescription="@string/previous_section"
-                android:insetLeft="0dp"
-                android:insetTop="0dp"
-                android:insetRight="0dp"
-                android:insetBottom="0dp"
-                android:padding="0dp"
-                app:cornerRadius="24dp"
-                app:icon="@drawable/ic_previous"
-                app:iconGravity="textStart"
-                app:iconPadding="0dp"
-                app:iconTint="@color/colorPrimary"
-                app:strokeColor="@color/colorPrimary" />
+        <Button
+            android:id="@+id/btn_next"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="@string/next_section"
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            app:cornerRadius="24dp"
+            app:icon="@drawable/ic_next"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/colorPrimary"
+            app:strokeColor="@color/colorPrimary" />
+    </LinearLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_mark_complete"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="16dp"
-                android:layout_weight="1"
-                android:text="@string/mark_complete"
-                android:textAllCaps="false"
-                app:cornerRadius="8dp"
-                app:iconGravity="textStart"
-                app:iconPadding="8dp" />
-
-            <Button
-                android:id="@+id/btn_next"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:contentDescription="@string/next_section"
-                android:insetLeft="0dp"
-                android:insetTop="0dp"
-                android:insetRight="0dp"
-                android:insetBottom="0dp"
-                android:padding="0dp"
-                app:cornerRadius="24dp"
-                app:icon="@drawable/ic_next"
-                app:iconGravity="textStart"
-                app:iconPadding="0dp"
-                app:iconTint="@color/colorPrimary"
-                app:strokeColor="@color/colorPrimary" />
-        </LinearLayout>
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    <Button
+        android:id="@+id/btn_download_video"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
     <ProgressBar
         android:id="@+id/progress_bar"
