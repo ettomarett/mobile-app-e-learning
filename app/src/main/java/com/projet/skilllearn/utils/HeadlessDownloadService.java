@@ -247,31 +247,69 @@ public class HeadlessDownloadService extends Service {
             progressStage = 2;
             updateNotification("Préparation de la conversion...");
             
-            // Inject the YouTube URL and select MP4 format
-            String js = "javascript:(function() {" +
-                       "console.log('Injecting URL: " + youtubeUrl + "');" +
-                       "document.getElementById('v').value = '" + youtubeUrl + "';" +
+            // First check if the page is fully loaded
+            String checkJs = "javascript:(function() {" +
+                       "var inputElement = document.getElementById('v');" +
                        "var formatBtn = document.getElementById('f');" +
-                       "if(formatBtn && formatBtn.innerText === 'MP3') {" +
-                       "  console.log('Clicking format button');" +
-                       "  formatBtn.click();" + // This should toggle to MP4
+                       "if (!inputElement || !formatBtn) {" +
+                       "  console.log('Page not fully loaded yet, input or format button missing');" +
+                       "  return false;" +
                        "}" +
-                       "console.log('URL injected and format set, ready for conversion');" +
                        "return true;" +
                        "})()";
             
-            headlessWebView.evaluateJavascript(js, result -> {
-                Log.d(TAG, "JavaScript URL injection result: " + result);
-                
-                // After URL injection, click the submit button with a small delay
+            headlessWebView.evaluateJavascript(checkJs, result -> {
+                Log.d(TAG, "Check if page elements loaded: " + result);
+                if ("true".equals(result)) {
+                    // Page is loaded, proceed with URL injection
+                    injectUrlAndProceed();
+                } else {
+                    // Page not loaded, wait a bit and try again
+                    Log.d(TAG, "Page not fully loaded, waiting and trying again");
+                    new Handler().postDelayed(this::injectUrlAndStartConversion, 2000);
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Error in injectUrlAndStartConversion", e);
+            updateNotification("Erreur: Échec de la conversion");
+        }
+    }
+    
+    private void injectUrlAndProceed() {
+        // Inject the YouTube URL and select MP4 format
+        String js = "javascript:(function() {" +
+                   "console.log('Injecting URL: " + youtubeUrl + "');" +
+                   "var inputElement = document.getElementById('v');" +
+                   "if (!inputElement) {" +
+                   "  console.log('Input element not found');" +
+                   "  Android.onError('Input element not found');" +
+                   "  return false;" +
+                   "}" +
+                   "inputElement.value = '" + youtubeUrl + "';" +
+                   "var formatBtn = document.getElementById('f');" +
+                   "if(formatBtn && formatBtn.innerText === 'MP3') {" +
+                   "  console.log('Clicking format button');" +
+                   "  formatBtn.click();" + // This should toggle to MP4
+                   "}" +
+                   "console.log('URL injected and format set, ready for conversion');" +
+                   "return true;" +
+                   "})()";
+        
+        headlessWebView.evaluateJavascript(js, result -> {
+            Log.d(TAG, "JavaScript URL injection result: " + result);
+            
+            // After URL injection, click the submit button with a small delay
+            if ("true".equals(result)) {
                 new Handler().postDelayed(() -> {
                     clickConvertButton();
                 }, 1000);
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "Error injecting URL and starting conversion", e);
-            updateNotification("Erreur: Échec de la conversion");
-        }
+            } else {
+                // Retry with a page reload if injection failed
+                Log.d(TAG, "URL injection failed, reloading page");
+                headlessWebView.loadUrl("https://ytmp3.la/");
+                new Handler().postDelayed(this::injectUrlAndStartConversion, 3000);
+            }
+        });
     }
     
     private void clickConvertButton() {
@@ -317,17 +355,67 @@ public class HeadlessDownloadService extends Service {
                        "console.log('Checking for download button');" +
                        "var downloadButtons = document.querySelectorAll('button');" +
                        "console.log('Found ' + downloadButtons.length + ' buttons total');" +
-                       "for (var i = 0; i < downloadButtons.length; i++) {" +
-                       "  var btn = downloadButtons[i];" +
-                       "  console.log('Button ' + i + ' text: \"' + btn.innerText + '\"');" +
-                       "  if (btn.innerText.trim().toLowerCase() === 'download' || " +
-                       "      btn.innerText.toLowerCase().includes('download') || " +
-                       "      btn.innerText.toLowerCase().includes('télécharger')) {" +
-                       "    console.log('Found download button!');" +
-                       "    btn.click();" +
-                       "    console.log('Download button clicked');" +
-                       "    Android.onDownloadButtonClicked();" +
-                       "    return true;" +
+                       "if (downloadButtons.length === 0) {" +
+                       "  console.log('No buttons found in main document, checking iframes');" +
+                       "  var iframes = document.querySelectorAll('iframe');" +
+                       "  console.log('Found ' + iframes.length + ' iframes');" +
+                       "  for (var i = 0; i < iframes.length; i++) {" +
+                       "    try {" +
+                       "      var iframeDoc = iframes[i].contentDocument || iframes[i].contentWindow.document;" +
+                       "      var iframeButtons = iframeDoc.querySelectorAll('button');" +
+                       "      console.log('Found ' + iframeButtons.length + ' buttons in iframe ' + i);" +
+                       "      for (var j = 0; j < iframeButtons.length; j++) {" +
+                       "        var btn = iframeButtons[j];" +
+                       "        console.log('Iframe ' + i + ' button ' + j + ' text: \"' + btn.innerText + '\"');" +
+                       "        if (btn.innerText.trim().toLowerCase() === 'download' || " +
+                       "            btn.innerText.toLowerCase().includes('download') || " +
+                       "            btn.innerText.toLowerCase().includes('télécharger')) {" +
+                       "          console.log('Found download button in iframe!');" +
+                       "          btn.click();" +
+                       "          console.log('Download button clicked');" +
+                       "          Android.onDownloadButtonClicked();" +
+                       "          return true;" +
+                       "        }" +
+                       "      }" +
+                       "    } catch(e) { console.log('Error accessing iframe: ' + e.message); }" +
+                       "  }" +
+                       "  // Also check for anchor elements that might be download links" +
+                       "  var anchors = document.querySelectorAll('a');" +
+                       "  console.log('Found ' + anchors.length + ' anchor elements');" +
+                       "  for (var i = 0; i < anchors.length; i++) {" +
+                       "    var a = anchors[i];" +
+                       "    console.log('Anchor ' + i + ' text: \"' + a.innerText + '\", href: ' + a.href);" +
+                       "    if ((a.innerText.trim().toLowerCase() === 'download' || " +
+                       "         a.innerText.toLowerCase().includes('download') || " +
+                       "         a.innerText.toLowerCase().includes('télécharger')) && " +
+                       "        (a.href.includes('.mp4') || a.href.includes('download'))) {" +
+                       "      console.log('Found download link!');" +
+                       "      a.click();" +
+                       "      console.log('Download link clicked');" +
+                       "      Android.onDownloadButtonClicked();" +
+                       "      return true;" +
+                       "    }" +
+                       "  }" +
+                       "  // Check page URL for any redirects" +
+                       "  console.log('Current page URL: ' + window.location.href);" +
+                       "  if (window.location.href.includes('download') || window.location.href.includes('convert')) {" +
+                       "    console.log('On a download/convert page, looking for download elements');" +
+                       "  }" +
+                       "  return false;" +
+                       "} else {" +
+                       "  // Original button checking logic" +
+                       "  for (var i = 0; i < downloadButtons.length; i++) {" +
+                       "    var btn = downloadButtons[i];" +
+                       "    console.log('Button ' + i + ' text: \"' + btn.innerText + '\"');" +
+                       "    if (btn.innerText.trim().toLowerCase() === 'download' || " +
+                       "        btn.innerText.toLowerCase().includes('download') || " +
+                       "        btn.innerText.toLowerCase().includes('télécharger')) {" +
+                       "      console.log('Found download button!');" +
+                       "      btn.click();" +
+                       "      console.log('Download button clicked');" +
+                       "      Android.onDownloadButtonClicked();" +
+                       "      return true;" +
+                       "    }" +
                        "  }" +
                        "}" +
                        "return false;" +
@@ -604,7 +692,14 @@ public class HeadlessDownloadService extends Service {
                             downloadCheckTimer = null;
                         }
                         conversionStarted = false;
-                        injectUrlAndStartConversion();
+                        
+                        // Reload the page first before trying again
+                        headlessWebView.loadUrl("https://ytmp3.la/");
+                        
+                        // Wait for the page to load before reinjecting
+                        new Handler().postDelayed(() -> {
+                            injectUrlAndStartConversion();
+                        }, 3000);
                     }
                 }, 60000); // Give it 1 minute before restarting
             });
@@ -629,9 +724,9 @@ public class HeadlessDownloadService extends Service {
                 updateNotification("Erreur: " + error);
                 
                 // If there's an error finding the submit button, try refreshing the page
-                if (error.contains("Submit button not found")) {
+                if (error.contains("Submit button not found") || error.contains("Cannot set properties of null")) {
                     new Handler().postDelayed(() -> {
-                        Log.d(TAG, "Refreshing page after submit button error");
+                        Log.d(TAG, "Refreshing page after error: " + error);
                         headlessWebView.loadUrl("https://ytmp3.la/");
                     }, 3000);
                 }
