@@ -87,10 +87,27 @@
         android:layout_height="wrap_content"
         android:text="Aucun cours disponible"
         android:textSize="18sp"
+        android:textAlignment="center"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_generate_course"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Générer votre cours souhaité"
+        android:textColor="@color/colorPrimary"
+        android:textSize="16sp"
+        android:padding="16dp"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground"
+        app:layout_constraintTop_toBottomOf="@id/tv_empty_view"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

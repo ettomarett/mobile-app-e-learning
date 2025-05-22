@@ -138,15 +138,24 @@ public class DownloadsActivity extends AppCompatActivity implements DownloadedVi
     
     @Override
     public void onPlayVideo(VideoDownloadManager.VideoDownloadInfo video) {
-        // Open video in default video player
         try {
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            Uri videoUri = Uri.parse(video.getLocalPath());
-            intent.setDataAndType(videoUri, "video/*");
+            // Create content URI using FileProvider
+            File videoFile = new File(video.getLocalPath());
+            Uri videoUri = androidx.core.content.FileProvider.getUriForFile(
+                this,
+                getApplicationContext().getPackageName() + ".provider",
+                videoFile
+            );
+
+            // Start CoursePlayerActivity with the local video URI
+            Intent intent = new Intent(this, CoursePlayerActivity.class);
+            intent.putExtra("videoUri", videoUri.toString());
+            intent.putExtra("isLocalFile", true);
+            intent.putExtra("title", video.getTitle());
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(intent);
         } catch (Exception e) {
-            Log.e(TAG, "Error opening video", e);
+            Log.e(TAG, "Error playing video: " + e.getMessage());
             Toast.makeText(this, "Impossible d'ouvrir la vidéo", Toast.LENGTH_SHORT).show();
         }
     }

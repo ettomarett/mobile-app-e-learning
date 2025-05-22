@@ -17,6 +17,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -56,6 +57,10 @@ public class CatalogFragment extends Fragment implements CourseAdapter.OnCourseC
         spinnerCategory = view.findViewById(R.id.spinner_category);
         spinnerLevel = view.findViewById(R.id.spinner_level);
         spinnerSort = view.findViewById(R.id.spinner_sort);
+
+        // Initialize generate course view
+        TextView tvGenerateCourse = view.findViewById(R.id.tv_generate_course);
+        tvGenerateCourse.setOnClickListener(v -> navigateToAIAssistant());
 
         // Initialiser le ViewModel
         viewModel = new ViewModelProvider(this).get(CourseViewModel.class);
@@ -192,10 +197,12 @@ public class CatalogFragment extends Fragment implements CourseAdapter.OnCourseC
                 rvCourses.setAdapter(adapter);
                 rvCourses.setVisibility(View.VISIBLE);
                 tvEmptyView.setVisibility(View.GONE);
+                view.findViewById(R.id.tv_generate_course).setVisibility(View.GONE);
             } else {
                 rvCourses.setVisibility(View.GONE);
                 tvEmptyView.setVisibility(View.VISIBLE);
-                tvEmptyView.setText("Aucun cours disponible");
+                view.findViewById(R.id.tv_generate_course).setVisibility(View.VISIBLE);
+                tvEmptyView.setText("Aucun cours trouvé pour votre recherche");
             }
         });
 
@@ -209,6 +216,18 @@ public class CatalogFragment extends Fragment implements CourseAdapter.OnCourseC
                 viewModel.clearError();
             }
         });
+    }
+
+    private void navigateToAIAssistant() {
+        // Navigate to AI Assistant with pre-filled message
+        Bundle args = new Bundle();
+        args.putString("initial_message", 
+            "Je souhaite que vous génériez un cours sur [votre sujet]. " +
+            "Par exemple: \"Je souhaite que vous génériez un cours sur la photographie pour débutants, " +
+            "couvrant les bases de la composition, l'exposition et l'utilisation de l'appareil photo.\"");
+        
+        Navigation.findNavController(requireView())
+                .navigate(R.id.nav_assistant, args);
     }
 
     @Override

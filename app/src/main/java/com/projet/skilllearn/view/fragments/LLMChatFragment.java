@@ -70,6 +70,22 @@ public class LLMChatFragment extends Fragment {
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         
+        // Set up click listener for send button
+        sendButton.setOnClickListener(v -> {
+            String message = messageInput.getText().toString().trim();
+            if (!message.isEmpty()) {
+                viewModel.sendMessage(message);
+                messageInput.setText("");
+            }
+        });
+
+        // Check for initial message from arguments
+        if (getArguments() != null && getArguments().containsKey("initial_message")) {
+            String initialMessage = getArguments().getString("initial_message");
+            messageInput.setText(initialMessage);
+            messageInput.setSelection(initialMessage.length());
+        }
+        
         // Observe chat history
         viewModel.getChatHistory().observe(getViewLifecycleOwner(), messages -> {
             adapter.submitList(messages);
@@ -107,15 +123,6 @@ public class LLMChatFragment extends Fragment {
             if (error != null) {
                 showToast("Erreur: " + error);
                 viewModel.resetCourseCreationState();
-            }
-        });
-        
-        // Set up send button
-        sendButton.setOnClickListener(v -> {
-            String message = messageInput.getText().toString().trim();
-            if (!message.isEmpty()) {
-                viewModel.sendMessage(message);
-                messageInput.setText("");
             }
         });
     }
