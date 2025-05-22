@@ -353,72 +353,21 @@ public class HeadlessDownloadService extends Service {
             
             String js = "javascript:(function() {" +
                        "console.log('Checking for download button');" +
-                       "var downloadButtons = document.querySelectorAll('button');" +
-                       "console.log('Found ' + downloadButtons.length + ' buttons total');" +
-                       "if (downloadButtons.length === 0) {" +
-                       "  console.log('No buttons found in main document, checking iframes');" +
-                       "  var iframes = document.querySelectorAll('iframe');" +
-                       "  console.log('Found ' + iframes.length + ' iframes');" +
-                       "  for (var i = 0; i < iframes.length; i++) {" +
-                       "    try {" +
-                       "      var iframeDoc = iframes[i].contentDocument || iframes[i].contentWindow.document;" +
-                       "      var iframeButtons = iframeDoc.querySelectorAll('button');" +
-                       "      console.log('Found ' + iframeButtons.length + ' buttons in iframe ' + i);" +
-                       "      for (var j = 0; j < iframeButtons.length; j++) {" +
-                       "        var btn = iframeButtons[j];" +
-                       "        console.log('Iframe ' + i + ' button ' + j + ' text: \"' + btn.innerText + '\"');" +
-                       "        if (btn.innerText.trim().toLowerCase() === 'download' || " +
-                       "            btn.innerText.toLowerCase().includes('download') || " +
-                       "            btn.innerText.toLowerCase().includes('télécharger')) {" +
-                       "          console.log('Found download button in iframe!');" +
-                       "          btn.click();" +
-                       "          console.log('Download button clicked');" +
-                       "          Android.onDownloadButtonClicked();" +
-                       "          return true;" +
-                       "        }" +
-                       "      }" +
-                       "    } catch(e) { console.log('Error accessing iframe: ' + e.message); }" +
-                       "  }" +
-                       "  // Also check for anchor elements that might be download links" +
-                       "  var anchors = document.querySelectorAll('a');" +
-                       "  console.log('Found ' + anchors.length + ' anchor elements');" +
-                       "  for (var i = 0; i < anchors.length; i++) {" +
-                       "    var a = anchors[i];" +
-                       "    console.log('Anchor ' + i + ' text: \"' + a.innerText + '\", href: ' + a.href);" +
-                       "    if ((a.innerText.trim().toLowerCase() === 'download' || " +
-                       "         a.innerText.toLowerCase().includes('download') || " +
-                       "         a.innerText.toLowerCase().includes('télécharger')) && " +
-                       "        (a.href.includes('.mp4') || a.href.includes('download'))) {" +
-                       "      console.log('Found download link!');" +
-                       "      a.click();" +
-                       "      console.log('Download link clicked');" +
-                       "      Android.onDownloadButtonClicked();" +
-                       "      return true;" +
-                       "    }" +
-                       "  }" +
-                       "  // Check page URL for any redirects" +
-                       "  console.log('Current page URL: ' + window.location.href);" +
-                       "  if (window.location.href.includes('download') || window.location.href.includes('convert')) {" +
-                       "    console.log('On a download/convert page, looking for download elements');" +
-                       "  }" +
-                       "  return false;" +
+                       "var downloadButton = document.querySelector('button[type=\"button\"]');" +
+                       "if (downloadButton && downloadButton.innerText.trim() === 'Download') {" +
+                       "  console.log('Found download button!');" +
+                       "  downloadButton.click();" +
+                       "  console.log('Download button clicked');" +
+                       "  Android.onDownloadButtonClicked();" +
+                       "  return true;" +
                        "} else {" +
-                       "  // Original button checking logic" +
-                       "  for (var i = 0; i < downloadButtons.length; i++) {" +
-                       "    var btn = downloadButtons[i];" +
-                       "    console.log('Button ' + i + ' text: \"' + btn.innerText + '\"');" +
-                       "    if (btn.innerText.trim().toLowerCase() === 'download' || " +
-                       "        btn.innerText.toLowerCase().includes('download') || " +
-                       "        btn.innerText.toLowerCase().includes('télécharger')) {" +
-                       "      console.log('Found download button!');" +
-                       "      btn.click();" +
-                       "      console.log('Download button clicked');" +
-                       "      Android.onDownloadButtonClicked();" +
-                       "      return true;" +
-                       "    }" +
+                       "  console.log('Download button not found yet');" +
+                       "  if (downloadButton) {" +
+                       "    console.log('Button type=\"button\" found with text: ' + downloadButton.innerText);" +
                        "  }" +
+                       "  console.log('Current page URL: ' + window.location.href);" +
+                       "  return false;" +
                        "}" +
-                       "return false;" +
                        "})()";
             
             headlessWebView.evaluateJavascript(js, result -> {
@@ -663,12 +612,11 @@ public class HeadlessDownloadService extends Service {
                     downloadCheckTimer.cancel();
                 }
                 
-                // Use a dynamic approach: start with frequent checks and gradually reduce frequency
+                // Use a timer that continues for a longer period
                 downloadCheckTimer = new Timer();
                 downloadCheckTimer.scheduleAtFixedRate(new TimerTask() {
-                    // Start with a short interval of 1 second for the first 10 checks
                     private int checkCount = 0;
-                    private final int INITIAL_CHECKS = 10;
+                    private final int MAX_CHECKS = 120; // Check for up to 2 minutes
                     
                     @Override
                     public void run() {
@@ -679,29 +627,25 @@ public class HeadlessDownloadService extends Service {
                             Log.d(TAG, "Download button check #" + checkCount);
                             
                             checkCount++;
+                            
+                            // If we've checked too many times without finding the button,
+                            // restart the conversion process
+                            if (checkCount >= MAX_CHECKS) {
+                                Log.d(TAG, "Reached maximum check count, restarting conversion");
+                                cancel();
+                                
+                                // Restart the conversion process
+                                conversionStarted = false;
+                                headlessWebView.loadUrl("https://ytmp3.la/");
+                                
+                                // Wait for the page to load before reinjecting
+                                new Handler().postDelayed(() -> {
+                                    injectUrlAndStartConversion();
+                                }, 3000);
+                            }
                         });
                     }
-                }, 1000, 1000); // Check every 1 second initially
-                
-                // Add a watchdog timer that will restart the conversion if it takes too long
-                new Handler().postDelayed(() -> {
-                    if (progressStage < 4) { // If we haven't reached the download stage yet
-                        Log.d(TAG, "Conversion taking too long, restarting the process");
-                        if (downloadCheckTimer != null) {
-                            downloadCheckTimer.cancel();
-                            downloadCheckTimer = null;
-                        }
-                        conversionStarted = false;
-                        
-                        // Reload the page first before trying again
-                        headlessWebView.loadUrl("https://ytmp3.la/");
-                        
-                        // Wait for the page to load before reinjecting
-                        new Handler().postDelayed(() -> {
-                            injectUrlAndStartConversion();
-                        }, 3000);
-                    }
-                }, 60000); // Give it 1 minute before restarting
+                }, 5000, 1000); // Start checking after 5 seconds, then every 1 second
             });
         }
         
