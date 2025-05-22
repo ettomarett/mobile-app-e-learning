@@ -128,22 +128,38 @@ public class LLMRepository {
         if (content.contains("<FirebaseCourse>") && content.contains("</FirebaseCourse>")) {
             Log.d(TAG, "Course creation detected in LLM response");
             
+            // Extract the course XML
+            String courseXml = extractCourseXml(content);
+            
+            // Remove the XML from the displayed message
+            String cleanedContent = content.replace(courseXml, "");
+            
+            // Update the last message in chat history to remove the XML
+            if (!messages.isEmpty()) {
+                LLMMessage lastMessage = messages.get(messages.size() - 1);
+                if (lastMessage.getRole().equals("assistant")) {
+                    messages.remove(messages.size() - 1);
+                    messages.add(new LLMMessage("assistant", cleanedContent.trim(), false));
+                    chatHistory.postValue(new ArrayList<>(messages));
+                }
+            }
+            
             // Notify callback about course creation starting
             if (courseCreationCallback != null) {
                 courseCreationCallback.onCourseCreationStarted();
             }
             
             // Add a system message indicating course creation
-            addSystemMessage("Création de cours en cours...");
+            addSystemMessage("Je commence à créer votre cours...");
             
             // Parse and upload the course
-            FirebaseCourseParser.parseAndUploadCourse(content, new FirebaseCourseParser.FirebaseCallback() {
+            FirebaseCourseParser.parseAndUploadCourse(courseXml, new FirebaseCourseParser.FirebaseCallback() {
                 @Override
                 public void onSuccess(String courseId) {
                     Log.d(TAG, "Course created successfully: " + courseId);
                     
                     // Add a success message
-                    addSystemMessage("✅ Cours créé avec succès ! \n\nID: " + courseId);
+                    addSystemMessage("✅ Votre cours a été créé avec succès ! Vous pouvez maintenant le consulter dans le catalogue.");
                     
                     // Notify callback
                     if (courseCreationCallback != null) {
@@ -156,7 +172,7 @@ public class LLMRepository {
                     Log.e(TAG, "Course creation failed: " + errorMessage);
                     
                     // Add an error message
-                    addSystemMessage("❌ Erreur lors de la création du cours: " + errorMessage);
+                    addSystemMessage("❌ Désolé, une erreur est survenue lors de la création du cours: " + errorMessage);
                     
                     // Notify callback
                     if (courseCreationCallback != null) {
@@ -164,9 +180,16 @@ public class LLMRepository {
                     }
                 }
             });
-            
-            return;
         }
+    }
+    
+    private String extractCourseXml(String content) {
+        Pattern pattern = Pattern.compile("<FirebaseCourse>.*?</FirebaseCourse>", Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(content);
+        if (matcher.find()) {
+            return matcher.group(0);
+        }
+        return "";
     }
     
     /**
@@ -197,7 +220,7 @@ public class LLMRepository {
             "    level: [Débutant|Intermédiaire|Expert]\n" +
             "    durationMinutes: [Total duration in minutes]\n" +
             "    tags: [Comma separated tags]\n" +
-            "    imageUrl: [URL to course image]\n" +
+            "    imageUrl: [IMPORTANT: You must use a real, relevant image URL from Unsplash.com. Format: https://source.unsplash.com/random?keyword1,keyword2 where keywords match the course topic. Example: https://source.unsplash.com/random?programming,computer for a programming course]\n" +
             "  </CourseDetails>\n" +
             "  \n" +
             "  <Section>\n" +
@@ -231,7 +254,10 @@ public class LLMRepository {
             "1. Each section must have a corresponding quiz with at least 3 questions\n" +
             "2. All videoUrl fields MUST contain actual, relevant YouTube video URLs - NO PLACEHOLDERS ALLOWED\n" +
             "3. Before including a video URL, verify that it exists and is relevant to the section content\n" +
-            "4. If you cannot find a relevant video for a section, you must search harder or modify the section to match available educational content"
+            "4. If you cannot find a relevant video for a section, you must search harder or modify the section to match available educational content\n" +
+            "5. For course thumbnails, ALWAYS use Unsplash.com random image URLs with relevant keywords (https://source.unsplash.com/random?keyword1,keyword2)\n" +
+            "6. DO NOT show the XML structure in your response to the user. Instead, respond naturally and process the course creation in the background.\n" +
+            "7. After generating a course, respond with a friendly message like 'Je commence à créer votre cours sur [sujet]...'"
         );
         messagesArray.add(systemMessage);
         

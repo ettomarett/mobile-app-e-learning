@@ -192,9 +192,25 @@ public class CoursePlayerActivity extends AppCompatActivity implements
 
     private void initializePlayer() {
         if (player == null) {
-            // Initialize the player
-            player = new ExoPlayer.Builder(this).build();
-            playerView.setPlayer(player);
+            // Initialize the player with better error handling
+            try {
+                player = new ExoPlayer.Builder(this)
+                    .setHandleAudioBecomingNoisy(true)
+                    .build();
+                player.addListener(this);
+                playerView.setPlayer(player);
+                
+                // Set default controls
+                playerView.setShowNextButton(false);
+                playerView.setShowPreviousButton(false);
+                playerView.setShowFastForwardButton(false);
+                playerView.setShowRewindButton(false);
+            } catch (Exception e) {
+                Log.e(TAG, "Error initializing ExoPlayer: " + e.getMessage());
+                Toast.makeText(this, "Erreur d'initialisation du lecteur vidéo", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
         }
 
         // Check if we're playing a local file
@@ -206,7 +222,13 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             // Playing a local video file
             try {
                 Uri videoUri = Uri.parse(videoUriString);
-                MediaItem mediaItem = MediaItem.fromUri(videoUri);
+                
+                // Create media item with better configuration
+                MediaItem mediaItem = new MediaItem.Builder()
+                    .setUri(videoUri)
+                    .setMediaId(title != null ? title : "Video locale")
+                    .build();
+
                 player.setMediaItem(mediaItem);
                 player.prepare();
                 player.setPlayWhenReady(true);
@@ -215,12 +237,27 @@ public class CoursePlayerActivity extends AppCompatActivity implements
                 if (getSupportActionBar() != null && title != null) {
                     getSupportActionBar().setTitle(title);
                 }
+                
+                // Show video player
+                playerView.setVisibility(View.VISIBLE);
+                youtubePlayerContainer.setVisibility(View.GONE);
+                
                 // Hide unnecessary UI elements
-                btnMarkComplete.setVisibility(View.GONE);
-                btnDownloadVideo.setVisibility(View.GONE);
+                hideUnnecessaryUIElements();
+                
+                // Add error handling
+                player.addListener(new Player.Listener() {
+                    @Override
+                    public void onPlayerError(com.google.android.exoplayer2.PlaybackException error) {
+                        Log.e(TAG, "Error playing video: " + error.getMessage());
+                        Toast.makeText(CoursePlayerActivity.this, 
+                            "Erreur lors de la lecture de la vidéo: " + error.getMessage(), 
+                            Toast.LENGTH_LONG).show();
+                    }
+                });
             } catch (Exception e) {
                 Log.e(TAG, "Error playing local video: " + e.getMessage());
-                Toast.makeText(this, "Erreur lors de la lecture de la vidéo", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Erreur lors de la lecture de la vidéo: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 finish();
             }
         } else {
@@ -229,6 +266,17 @@ public class CoursePlayerActivity extends AppCompatActivity implements
                 loadSection(currentSectionIndex);
             }
         }
+    }
+
+    private void hideUnnecessaryUIElements() {
+        // Hide course-related UI elements
+        if (btnPrevious != null) btnPrevious.setVisibility(View.GONE);
+        if (btnNext != null) btnNext.setVisibility(View.GONE);
+        if (btnMarkComplete != null) btnMarkComplete.setVisibility(View.GONE);
+        if (btnDownloadVideo != null) btnDownloadVideo.setVisibility(View.GONE);
+        if (viewPager != null) viewPager.setVisibility(View.GONE);
+        if (tabLayout != null) tabLayout.setVisibility(View.GONE);
+        if (rvSections != null) rvSections.setVisibility(View.GONE);
     }
 
     private void setupViewPager() {

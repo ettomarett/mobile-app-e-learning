@@ -434,14 +434,14 @@ public class VideoDownloadManager {
             if (file.isFile() && isVideoFile(file.getName())) {
                 try {
                     // Generate a unique ID for this video
-                    String uniqueId = UUID.randomUUID().toString();
+                    String uniqueId = file.getName().replace(".mp4", "");
                     
-                    // Create a download info object
+                    // Create a download info object with a friendly display name
                     VideoDownloadInfo info = new VideoDownloadInfo(
                         -1, // No download ID for existing files
-                        uniqueId, // Use unique ID as courseId
-                        uniqueId, // Use same ID as sectionId
-                        file.getName(), // Use filename as title
+                        uniqueId, // Use filename as courseId
+                        uniqueId, // Use filename as sectionId
+                        "Vidéo téléchargée " + formatFileSize(file.length()), // User-friendly title with file size
                         "local://video", // Local URL
                         file.getAbsolutePath(),
                         VideoDownloadInfo.STATUS_COMPLETED
@@ -460,6 +460,16 @@ public class VideoDownloadManager {
         
         // Update live data
         updateLiveData();
+    }
+    
+    /**
+     * Format file size in a human-readable format
+     */
+    private String formatFileSize(long size) {
+        if (size <= 0) return "0 B";
+        final String[] units = new String[] { "B", "KB", "MB", "GB", "TB" };
+        int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
+        return String.format("%.1f %s", size / Math.pow(1024, digitGroups), units[digitGroups]);
     }
     
     /**
