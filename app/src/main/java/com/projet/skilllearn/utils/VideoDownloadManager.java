@@ -204,7 +204,7 @@ public class VideoDownloadManager {
             return false;
         }
         
-        // Create filename using courseId and sectionId only
+        // Create filename using courseId and sectionId
         String fileName = courseId + "_" + sectionId + ".mp4";
         
         // Get destination directory
@@ -224,6 +224,9 @@ public class VideoDownloadManager {
                 destFile.toPath(),
                 java.nio.file.StandardCopyOption.REPLACE_EXISTING
             );
+            
+            // Save title metadata
+            saveTitleMetadata(courseId, sectionId, title);
             
             // Create download info
             VideoDownloadInfo downloadInfo = new VideoDownloadInfo(
@@ -253,6 +256,38 @@ public class VideoDownloadManager {
             Log.e(TAG, "Error saving downloaded video", e);
             return false;
         }
+    }
+    
+    private void saveTitleMetadata(String courseId, String sectionId, String title) {
+        try {
+            File metadataDir = new File(context.getExternalFilesDir(null), "video_metadata");
+            if (!metadataDir.exists()) {
+                metadataDir.mkdirs();
+            }
+            
+            File metadataFile = new File(metadataDir, courseId + "_" + sectionId + ".txt");
+            java.nio.file.Files.write(
+                metadataFile.toPath(),
+                title.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving title metadata", e);
+        }
+    }
+    
+    private String loadTitleMetadata(String courseId, String sectionId) {
+        try {
+            File metadataDir = new File(context.getExternalFilesDir(null), "video_metadata");
+            File metadataFile = new File(metadataDir, courseId + "_" + sectionId + ".txt");
+            
+            if (metadataFile.exists()) {
+                byte[] bytes = java.nio.file.Files.readAllBytes(metadataFile.toPath());
+                return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading title metadata", e);
+        }
+        return null;
     }
     
     /**
@@ -433,15 +468,25 @@ public class VideoDownloadManager {
         for (File file : files) {
             if (file.isFile() && isVideoFile(file.getName())) {
                 try {
-                    // Generate a unique ID for this video
-                    String uniqueId = file.getName().replace(".mp4", "");
+                    // Extract courseId and sectionId from filename
+                    String fileName = file.getName().replace(".mp4", "");
+                    String[] parts = fileName.split("_");
+                    String courseId = parts.length > 0 ? parts[0] : fileName;
+                    String sectionId = parts.length > 1 ? parts[1] : fileName;
                     
-                    // Create a download info object with a friendly display name
+                    // Try to load the original title
+                    String title = loadTitleMetadata(courseId, sectionId);
+                    if (title == null) {
+                        // If no title metadata, create a generic one with file size
+                        title = "Vidéo téléchargée " + formatFileSize(file.length());
+                    }
+                    
+                    // Create a download info object
                     VideoDownloadInfo info = new VideoDownloadInfo(
                         -1, // No download ID for existing files
-                        uniqueId, // Use filename as courseId
-                        uniqueId, // Use filename as sectionId
-                        "Vidéo téléchargée " + formatFileSize(file.length()), // User-friendly title with file size
+                        courseId,
+                        sectionId,
+                        title,
                         "local://video", // Local URL
                         file.getAbsolutePath(),
                         VideoDownloadInfo.STATUS_COMPLETED
@@ -449,9 +494,9 @@ public class VideoDownloadManager {
                     info.setLocalPath(file.getAbsolutePath());
                     
                     // Add to completed downloads
-                    String fileKey = generateFileKey(uniqueId, uniqueId);
+                    String fileKey = generateFileKey(courseId, sectionId);
                     completedDownloads.put(fileKey, info);
-                    Log.d(TAG, "Found video file: " + file.getName() + " at " + file.getAbsolutePath());
+                    Log.d(TAG, "Found video file: " + file.getName() + " with title: " + title);
                 } catch (Exception e) {
                     Log.e(TAG, "Error processing video file: " + file.getName(), e);
                 }
