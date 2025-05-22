@@ -100,5 +100,11 @@
     <string name="achievement_badge">Badge de réussite</string>
     <string name="login_to_view_achievements">Connectez-vous pour voir vos badges et récompenses</string>
 
+    <!-- Download page -->
+    <string name="no_downloads_yet">Aucun téléchargement pour le moment.\nTéléchargez des vidéos pour les visionner hors ligne.</string>
+    <string name="play_video">Lire la vidéo</string>
+    <string name="delete_video">Supprimer la vidéo</string>
+    <string name="placeholder_video">Vignette de la vidéo</string>
+
 </resources>
 

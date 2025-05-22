@@ -176,34 +176,45 @@ public class ProfileFragment extends Fragment {
             // Configurer le "bouton" Déconnexion
             if (btnLogout != null) {
                 btnLogout.setOnClickListener(v -> {
-                    try {
-                        Log.d(TAG, "Clic sur Déconnexion");
-
-                        // Afficher une boîte de dialogue de confirmation
-                        new AlertDialog.Builder(requireContext())
-                                .setTitle("Déconnexion")
-                                .setMessage("Êtes-vous sûr de vouloir vous déconnecter ?")
-                                .setPositiveButton("Oui", (dialog, which) -> {
-                                    // Déconnexion de Firebase
-                                    FirebaseAuth.getInstance().signOut();
-
-                                    // Redirection vers l'écran de connexion
-                                    Intent intent = new Intent(requireActivity(), LoginActivity.class);
-                                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                    startActivity(intent);
-                                })
-                                .setNegativeButton("Non", null)
-                                .show();
-                    } catch (Exception e) {
-                        Log.e(TAG, "Erreur lors de la déconnexion", e);
-                        Toast.makeText(requireContext(), "Erreur: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
+                    Log.d(TAG, "Clic sur Déconnexion");
+                    // Afficher une confirmation avant de déconnecter l'utilisateur
+                    new AlertDialog.Builder(requireContext())
+                            .setTitle("Déconnexion")
+                            .setMessage("Êtes-vous sûr de vouloir vous déconnecter ?")
+                            .setPositiveButton("Oui", (dialog, which) -> {
+                                // Déconnecter l'utilisateur de Firebase
+                                FirebaseAuth.getInstance().signOut();
+                                
+                                // Rediriger vers la page de connexion
+                                Intent intent = new Intent(requireActivity(), LoginActivity.class);
+                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                startActivity(intent);
+                            })
+                            .setNegativeButton("Non", null)
+                            .show();
                 });
             } else {
                 Log.e(TAG, "btnLogout est null");
             }
+            
+            // Configurer le bouton Téléchargements
+            LinearLayout btnDownload = getView().findViewById(R.id.btn_download);
+            if (btnDownload != null) {
+                btnDownload.setOnClickListener(v -> {
+                    Log.d(TAG, "Clic sur Téléchargements");
+                    try {
+                        Intent intent = new Intent(requireActivity(), DownloadsActivity.class);
+                        startActivity(intent);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Erreur lors du lancement de l'activité de téléchargements", e);
+                        Toast.makeText(requireContext(), "Erreur: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } else {
+                Log.e(TAG, "btnDownload est null");
+            }
         } catch (Exception e) {
-            Log.e(TAG, "Erreur lors de la configuration des listeners de clics", e);
+            Log.e(TAG, "Erreur dans setupClickListeners", e);
         }
     }
 

@@ -40,6 +40,9 @@
         <activity
             android:name=".view.EditProfileActivity"
             android:label="Modifier le profil" />
+        <activity
+            android:name=".view.DownloadsActivity"
+            android:label="Téléchargements" />
     </application>
 
 </manifest>
