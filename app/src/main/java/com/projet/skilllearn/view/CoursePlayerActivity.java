@@ -58,7 +58,8 @@ import java.util.regex.Pattern;
 public class CoursePlayerActivity extends AppCompatActivity implements
         CourseSectionAdapter.OnSectionClickListener,
         Player.Listener,
-        UserProgressManager.BadgeAwardedListener {
+        UserProgressManager.BadgeAwardedListener,
+        YouTubeDownloadDialog.DownloadCompleteListener {
 
     private static final String TAG = "CoursePlayerActivity";
     private static final int STORAGE_PERMISSION_CODE = 1001;
@@ -704,10 +705,11 @@ public class CoursePlayerActivity extends AppCompatActivity implements
      */
     private void updateDownloadButton(boolean isDownloaded, boolean isYouTube) {
         if (isYouTube) {
-            // YouTube ne peut pas être téléchargé
+            // YouTube peut maintenant être téléchargé via ssyoutube.com
             btnDownloadVideo.setVisibility(View.VISIBLE);
-            btnDownloadVideo.setText("YouTube (non téléchargeable)");
-            btnDownloadVideo.setEnabled(false);
+            btnDownloadVideo.setText("Télécharger vidéo YouTube");
+            btnDownloadVideo.setEnabled(true);
+            btnDownloadVideo.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_download, 0, 0, 0);
         } else if (isDownloaded) {
             // Vidéo déjà téléchargée
             btnDownloadVideo.setVisibility(View.VISIBLE);
@@ -767,13 +769,13 @@ public class CoursePlayerActivity extends AppCompatActivity implements
                     .setNegativeButton("Non", null)
                     .show();
         } else {
-            // Télécharger la vidéo
+            // Pour les vidéos YouTube, utiliser notre nouveau dialogue de téléchargement
             if (isYouTubeUrl(videoUrl)) {
-                Toast.makeText(this, "Les vidéos YouTube ne peuvent pas être téléchargées", Toast.LENGTH_SHORT).show();
+                openYouTubeDownloadDialog(videoUrl, section);
                 return;
             }
             
-            // Lancer le téléchargement
+            // Pour les vidéos standard, utiliser le gestionnaire de téléchargement existant
             long downloadId = downloadManager.downloadVideo(
                     videoUrl, 
                     courseId, 
@@ -789,6 +791,19 @@ public class CoursePlayerActivity extends AppCompatActivity implements
                 Toast.makeText(this, "Impossible de démarrer le téléchargement", Toast.LENGTH_SHORT).show();
             }
         }
+    }
+    
+    /**
+     * Ouvre le dialogue pour télécharger des vidéos YouTube
+     */
+    private void openYouTubeDownloadDialog(String youtubeUrl, CourseSection section) {
+        YouTubeDownloadDialog dialog = YouTubeDownloadDialog.newInstance(
+                youtubeUrl,
+                courseId,
+                section.getSectionId(),
+                section.getTitle()
+        );
+        dialog.show(getSupportFragmentManager(), "youtube_download_dialog");
     }
     
     /**
@@ -824,6 +839,41 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             } else {
                 Toast.makeText(this, "Permission de stockage nécessaire pour télécharger des vidéos", Toast.LENGTH_SHORT).show();
             }
+        }
+    }
+
+    /**
+     * Appelé lorsqu'un fichier vidéo a été téléchargé via le dialogue YouTube
+     */
+    @Override
+    public void onDownloadComplete(File downloadedFile) {
+        if (sections == null || sections.isEmpty() || currentSectionIndex >= sections.size()) {
+            return;
+        }
+        
+        CourseSection section = sections.get(currentSectionIndex);
+        
+        // Copier le fichier téléchargé vers notre emplacement de stockage interne
+        boolean success = downloadManager.saveDownloadedVideo(
+                downloadedFile,
+                courseId,
+                section.getSectionId(),
+                section.getTitle()
+        );
+        
+        if (success) {
+            Toast.makeText(this, "Vidéo sauvegardée pour visionnage hors ligne", Toast.LENGTH_SHORT).show();
+            
+            // Mettre à jour le bouton de téléchargement
+            updateDownloadButton(true);
+            
+            // Charger la vidéo locale
+            String localPath = downloadManager.getLocalVideoPath(courseId, section.getSectionId());
+            if (localPath != null) {
+                loadLocalVideo(localPath);
+            }
+        } else {
+            Toast.makeText(this, "Erreur lors de la sauvegarde de la vidéo", Toast.LENGTH_SHORT).show();
         }
     }
 }

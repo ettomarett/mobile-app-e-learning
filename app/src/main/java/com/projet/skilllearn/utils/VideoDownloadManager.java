@@ -191,6 +191,71 @@ public class VideoDownloadManager {
     }
     
     /**
+     * Save a downloaded video file to our storage location
+     * @param downloadedFile The downloaded file
+     * @param courseId Course ID
+     * @param sectionId Section ID
+     * @param title Video title
+     * @return True if successful, false otherwise
+     */
+    public boolean saveDownloadedVideo(File downloadedFile, String courseId, String sectionId, String title) {
+        if (downloadedFile == null || !downloadedFile.exists()) {
+            Log.e(TAG, "Cannot save video: File does not exist");
+            return false;
+        }
+        
+        // Create a friendly filename
+        String fileName = sanitizeFileName(title) + "_" + sectionId + ".mp4";
+        
+        // Get destination directory
+        File destDir = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES);
+        if (destDir == null) {
+            Log.e(TAG, "Cannot save video: External files directory not available");
+            return false;
+        }
+        
+        // Create destination file
+        File destFile = new File(destDir, fileName);
+        
+        try {
+            // Copy file using Java NIO for efficiency
+            java.nio.file.Files.copy(
+                downloadedFile.toPath(),
+                destFile.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING
+            );
+            
+            // Create download info
+            VideoDownloadInfo downloadInfo = new VideoDownloadInfo(
+                    -1, // No download ID since it was manually downloaded
+                    courseId,
+                    sectionId,
+                    title,
+                    "manual_download", // Placeholder URL
+                    fileName,
+                    VideoDownloadInfo.STATUS_COMPLETED
+            );
+            downloadInfo.setLocalPath(destFile.getAbsolutePath());
+            
+            // Add to completed downloads
+            String fileKey = generateFileKey(courseId, sectionId);
+            completedDownloads.put(fileKey, downloadInfo);
+            
+            // Update Firebase record
+            updateFirebaseDownloadStatus(courseId, sectionId, true);
+            
+            // Update live data
+            updateLiveData();
+            
+            Log.d(TAG, "Manually downloaded video saved: " + fileKey);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving downloaded video", e);
+            return false;
+        }
+    }
+    
+    /**
      * Delete a downloaded video
      * @param courseId Course ID
      * @param sectionId Section ID
