@@ -268,6 +268,7 @@ public class EditProfileActivity extends AppCompatActivity {
                     })
                     .show();
         } else {
+            super.onBackPressed();
             setResult(Activity.RESULT_CANCELED);
             finish();
             overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);

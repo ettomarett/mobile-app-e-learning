@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.projet.skilllearn"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -29,6 +29,25 @@ android {
             )
         }
     }
+    
+    // Add packaging options to handle duplicate files
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/io.netty.versions.properties"
+            excludes += "META-INF/LICENSE.md"
+            excludes += "META-INF/LICENSE-notice.md"
+            excludes += "META-INF/DEPENDENCIES"
+            
+            // Handle duplicate files in Netty libraries
+            pickFirsts += "META-INF/native-image/io.netty/**"
+            pickFirsts += "META-INF/native/libnetty_transport_native_epoll_**"
+            pickFirsts += "META-INF/maven/io.netty/**"
+            pickFirsts += "META-INF/maven/com.google.code.gson/**"
+        }
+    }
+    
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -54,6 +73,16 @@ dependencies {
 
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
+
+    // Retrofit & Network
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+
+    // Navigation Component
+    implementation("androidx.navigation:navigation-fragment:2.7.5")
+    implementation("androidx.navigation:navigation-ui:2.7.5")
 
     // Tests
     testImplementation("junit:junit:4.13.2")

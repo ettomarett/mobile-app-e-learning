@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/nav_home">
+
+    <fragment
+        android:id="@+id/nav_home"
+        android:name="com.projet.skilllearn.view.HomeFragment"
+        android:label="Accueil"
+        tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/nav_catalog"
+        android:name="com.projet.skilllearn.view.CatalogFragment"
+        android:label="Catalogue"
+        tools:layout="@layout/fragment_catalog" />
+
+    <fragment
+        android:id="@+id/nav_assistant"
+        android:name="com.projet.skilllearn.view.fragments.LLMChatFragment"
+        android:label="Assistant IA"
+        tools:layout="@layout/fragment_llm_chat" />
+
+    <fragment
+        android:id="@+id/nav_profile"
+        android:name="com.projet.skilllearn.view.ProfileFragment"
+        android:label="Profil"
+        tools:layout="@layout/fragment_profile" />
+
+</navigation> 

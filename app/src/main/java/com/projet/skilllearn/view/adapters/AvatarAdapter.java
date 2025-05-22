@@ -41,7 +41,7 @@ public class AvatarAdapter extends RecyclerView.Adapter<AvatarAdapter.AvatarView
     }
 
     @Override
-    public void onBindViewHolder(@NonNull AvatarViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull AvatarViewHolder holder, final int position) {
         holder.ivAvatar.setImageResource(avatars[position]);
 
         // Mettre en évidence l'avatar sélectionné
@@ -57,10 +57,13 @@ public class AvatarAdapter extends RecyclerView.Adapter<AvatarAdapter.AvatarView
 
         holder.itemView.setOnClickListener(v -> {
             int previousSelected = selectedPosition;
-            selectedPosition = position;
-            notifyItemChanged(previousSelected);
-            notifyItemChanged(selectedPosition);
-            listener.onAvatarClick(position);
+            int adapterPosition = holder.getBindingAdapterPosition();
+            if (adapterPosition != RecyclerView.NO_POSITION) {
+                selectedPosition = adapterPosition;
+                notifyItemChanged(previousSelected);
+                notifyItemChanged(selectedPosition);
+                listener.onAvatarClick(adapterPosition);
+            }
         });
     }
 

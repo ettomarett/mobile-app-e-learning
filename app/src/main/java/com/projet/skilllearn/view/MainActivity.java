@@ -2,76 +2,111 @@ package com.projet.skilllearn.view;
 
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentContainerView;
+import androidx.navigation.NavController;
+import androidx.navigation.NavDestination;
+import androidx.navigation.Navigation;
+import androidx.navigation.fragment.NavHostFragment;
+import androidx.navigation.ui.AppBarConfiguration;
+import androidx.navigation.ui.NavigationUI;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.projet.skilllearn.R;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
+    private NavController navController;
     private BottomNavigationView bottomNavigationView;
+    private AppBarConfiguration appBarConfiguration;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        try {
+            // Set content view first
+            setContentView(R.layout.activity_main);
+            Log.d(TAG, "Content view set");
 
-        bottomNavigationView = findViewById(R.id.bottom_navigation);
+            // Find views
+            bottomNavigationView = findViewById(R.id.bottom_navigation);
+            if (bottomNavigationView == null) {
+                Log.e(TAG, "BottomNavigationView not found in layout");
+                Toast.makeText(this, "Error: Navigation view not found", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Log.d(TAG, "BottomNavigationView found");
 
-        // Passez savedInstanceState à la méthode
-        setupBottomNavigation(savedInstanceState);
+            // Setup navigation
+            try {
+                // Use NavHostFragment approach for more reliable fragment management
+                FragmentContainerView navHostFragment = findViewById(R.id.nav_host_fragment);
+                if (navHostFragment == null) {
+                    Log.e(TAG, "NavHostFragment not found in layout");
+                    Toast.makeText(this, "Error: Navigation host not found", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                // Get NavController from the NavHostFragment
+                navController = ((NavHostFragment) getSupportFragmentManager()
+                        .findFragmentById(R.id.nav_host_fragment))
+                        .getNavController();
+                
+                Log.d(TAG, "NavController initialized");
+                
+                // Define top level destinations
+                appBarConfiguration = new AppBarConfiguration.Builder(
+                        R.id.nav_home,
+                        R.id.nav_catalog,
+                        R.id.nav_assistant,
+                        R.id.nav_profile
+                ).build();
+                Log.d(TAG, "AppBarConfiguration created");
+                
+                // Connect bottom navigation with nav controller
+                NavigationUI.setupWithNavController(bottomNavigationView, navController);
+                Log.d(TAG, "BottomNavigationView setup completed");
+                
+                // Only setup ActionBar if it exists
+                if (getSupportActionBar() != null) {
+                    NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
+                    Log.d(TAG, "ActionBar setup completed");
+                } else {
+                    Log.d(TAG, "No ActionBar present, skipping setup");
+                }
+                
+                // Log navigation changes
+                navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
+                    try {
+                        String label = destination.getLabel() != null ? destination.getLabel().toString() : "Unknown";
+                        Log.d(TAG, "Navigation to: " + label + " (ID: " + destination.getId() + ")");
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error logging navigation change", e);
+                    }
+                });
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error setting up navigation", e);
+                Toast.makeText(this, "Error setting up navigation: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onCreate", e);
+            Toast.makeText(this, "Error initializing app: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
-    // Modifiez la signature de la méthode pour accepter savedInstanceState
-    private void setupBottomNavigation(Bundle savedInstanceState) {
+    @Override
+    public boolean onSupportNavigateUp() {
         try {
-            bottomNavigationView.setOnItemSelectedListener(item -> {
-                Fragment selectedFragment = null;
-                String fragmentTag = "";
-
-                int itemId = item.getItemId();
-                if (itemId == R.id.nav_home) {
-                    selectedFragment = new HomeFragment();
-                    fragmentTag = "home";
-                } else if (itemId == R.id.nav_catalog) {
-                    selectedFragment = new CatalogFragment();
-                    fragmentTag = "catalog";
-                } else if (itemId == R.id.nav_profile) {
-                    selectedFragment = new ProfileFragment();
-                    fragmentTag = "profile";
-                }
-
-                if (selectedFragment != null) {
-                    try {
-                        getSupportFragmentManager().beginTransaction()
-                                .replace(R.id.fragment_container, selectedFragment, fragmentTag)
-                                .commit();
-                        return true;
-                    } catch (Exception e) {
-                        Log.e("MainActivity", "Erreur lors du chargement du fragment: " + fragmentTag, e);
-                        Toast.makeText(this, "Erreur lors du chargement de la page", Toast.LENGTH_SHORT).show();
-                        return false;
-                    }
-                }
-
-                return false;
-            });
-
-            // Fragment par défaut
-            if (savedInstanceState == null) {
-                try {
-                    getSupportFragmentManager().beginTransaction()
-                            .replace(R.id.fragment_container, new HomeFragment(), "home")
-                            .commit();
-                } catch (Exception e) {
-                    Log.e("MainActivity", "Erreur lors du chargement du fragment par défaut", e);
-                    Toast.makeText(this, "Erreur lors du chargement de la page d'accueil", Toast.LENGTH_SHORT).show();
-                }
-            }
+            return NavigationUI.navigateUp(navController, appBarConfiguration) 
+                || super.onSupportNavigateUp();
         } catch (Exception e) {
-            Log.e("MainActivity", "Erreur lors de la configuration de la navigation", e);
+            Log.e(TAG, "Error in onSupportNavigateUp", e);
+            return super.onSupportNavigateUp();
         }
     }
 }

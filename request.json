@@ -1,0 +1,14 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful learning assistant for an e-learning app called SkillLearn. Provide concise, informative responses. When appropriate, include references to learning materials. Be friendly and encouraging."
+    },
+    {
+      "role": "user",
+      "content": "Hello, can you help me learn Java?"
+    }
+  ],
+  "max_tokens": 800,
+  "temperature": 0.7
+} 

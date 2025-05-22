@@ -9,6 +9,10 @@
         android:icon="@android:drawable/ic_menu_search"
         android:title="Catalogue" />
     <item
+        android:id="@+id/nav_assistant"
+        android:icon="@drawable/ic_ai_assistant"
+        android:title="Assistant IA" />
+    <item
         android:id="@+id/nav_profile"
         android:icon="@android:drawable/ic_menu_myplaces"
         android:title="Profil" />

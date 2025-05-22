@@ -14,6 +14,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -207,38 +208,43 @@ public class HomeFragment extends Fragment {
     }
 
     private void setupClickListeners() {
-        // Explore button - navigate to catalog
-        btnExplore.setOnClickListener(v -> navigateToCatalog());
+        try {
+            btnExplore.setOnClickListener(v -> navigateToCatalog());
 
-        // View all recommended - navigate to catalog
-        tvViewAllRecommended.setOnClickListener(v -> navigateToCatalog());
+            MaterialButton btnAiAssistant = requireView().findViewById(R.id.btn_ai_assistant);
+            btnAiAssistant.setOnClickListener(v -> {
+                // Navigate to LLM Chat Fragment
+                Navigation.findNavController(requireView())
+                        .navigate(R.id.nav_assistant);
+            });
 
-        // View all learning - navigate to user progress
-        tvViewAllLearning.setOnClickListener(v -> navigateToUserProgress());
+            tvViewAllRecommended.setOnClickListener(v -> navigateToCatalog());
+            tvViewAllLearning.setOnClickListener(v -> navigateToUserProgress());
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up click listeners", e);
+        }
     }
 
     private void navigateToCatalog() {
-        if (getActivity() != null) {
-            getActivity().getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, new CatalogFragment())
-                    .addToBackStack(null)
-                    .commit();
+        try {
+            Navigation.findNavController(requireView()).navigate(R.id.nav_catalog);
+        } catch (Exception e) {
+            Log.e(TAG, "Error navigating to catalog", e);
         }
     }
 
     private void navigateToUserProgress() {
-        if (getActivity() != null) {
+        try {
             if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-                getActivity().getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.fragment_container, new UserProgressFragment())
-                        .addToBackStack(null)
-                        .commit();
+                Navigation.findNavController(requireView()).navigate(R.id.nav_profile);
             } else {
                 // Show login prompt if not logged in
                 Toast.makeText(requireContext(),
                         "Veuillez vous connecter pour accéder à vos cours",
                         Toast.LENGTH_SHORT).show();
             }
+        } catch (Exception e) {
+            Log.e(TAG, "Error navigating to user progress", e);
         }
     }
 

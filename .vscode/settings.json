@@ -1,0 +1,12 @@
+{
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.debug.settings.hotCodeReplace": "auto",
+    "files.exclude": {
+        "**/.gradle": false,
+        "**/.idea": true,
+        "**/build": false
+    },
+    "kotlin.trace.server": "messages",
+    "kotlin.debugAdapter.enabled": true
+} 

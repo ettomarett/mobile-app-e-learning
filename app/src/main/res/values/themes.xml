@@ -4,11 +4,12 @@
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="android:statusBarColor">@color/colorPrimaryDark</item>
-        <item name="fontFamily"></item>
+        <item name="fontFamily">@font/poppins</item>
         <item name="android:fontFamily">@font/poppins</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="materialButtonStyle">@style/Widget.SkillLearn.Button</item>
         <item name="cardViewStyle">@style/Widget.SkillLearn.CardView</item>
+        <item name="bottomNavigationStyle">@style/Widget.SkillLearn.BottomNavigationView</item>
     </style>
 
     <style name="Theme.SkillLearn" parent="Base.Theme.SkillLearn" />
@@ -25,5 +26,12 @@
         <item name="cardCornerRadius">12dp</item>
         <item name="cardElevation">3dp</item>
         <item name="contentPadding">0dp</item>
+    </style>
+
+    <style name="Widget.SkillLearn.BottomNavigationView" parent="Widget.Material3.BottomNavigationView">
+        <item name="itemIconTint">@color/colorPrimary</item>
+        <item name="itemTextColor">@color/colorPrimary</item>
+        <item name="itemActiveIndicatorStyle">@null</item>
+        <item name="labelVisibilityMode">labeled</item>
     </style>
 </resources>

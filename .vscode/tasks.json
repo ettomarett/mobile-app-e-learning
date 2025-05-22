@@ -1,0 +1,14 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Run on Emulator",
+        "type": "shell",
+        "command": ".\\gradlew.bat",
+        "args": ["installDebug"],
+        "group": { "kind": "build", "isDefault": true },
+        "problemMatcher": []
+      }
+    ]
+  }
+  

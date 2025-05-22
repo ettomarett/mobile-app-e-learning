@@ -193,6 +193,20 @@
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_ai_assistant"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:text="AI Learning Assistant"
+            android:textAllCaps="false"
+            app:icon="@drawable/ic_ai_assistant"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/layout_stats" />
+
         <TextView
             android:id="@+id/tv_recommended_courses"
             android:layout_width="wrap_content"
@@ -204,7 +218,7 @@
             android:textSize="18sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/layout_stats" />
+            app:layout_constraintTop_toBottomOf="@id/btn_ai_assistant" />
 
         <TextView
             android:id="@+id/tv_view_all_recommended"

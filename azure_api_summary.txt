@@ -1,0 +1,73 @@
+# Azure OpenAI API Integration Test Results
+
+## Summary of Issues
+Based on our testing of the Azure OpenAI API connection, we've identified the following issues:
+
+1. The API is consistently returning 404 NOT FOUND errors
+2. We've tested various combinations of:
+   - Different API endpoint formats
+   - Different model name formats
+   - Different header configurations
+   - Different API versions
+
+## Likely Causes
+The most probable causes for the 404 errors are:
+
+1. **Incorrect Model Deployment Name**: The "DeepSeek-R1-gADK" model might not be deployed or might have a different name in the Azure OpenAI service.
+2. **Incorrect Endpoint URL**: The endpoint URL "https://DeepSeek-R1-gADK.eastus.models.ai.azure.com" might be incorrect.
+3. **Invalid API Key**: The API key might be incorrect, expired, or not have the necessary permissions.
+4. **API Version Mismatch**: The API version "2024-05-01-preview" might not be supported by your Azure OpenAI deployment.
+
+## Recommendations
+
+### 1. Verify Azure OpenAI Settings
+- Log into the Azure Portal
+- Navigate to your Azure OpenAI service
+- Check the exact deployment name under "Deployments"
+- Verify the API endpoint URL under "Keys and Endpoint"
+- Regenerate and copy a new API key
+
+### 2. Update the App Configuration
+After verifying the correct information, update these constants in LLMRepository.java:
+```java
+private static final String AZURE_ENDPOINT = "your-verified-endpoint";
+private static final String AZURE_API_KEY = "your-verified-api-key";
+private static final String AZURE_MODEL_NAME = "your-verified-model-name";
+private static final String API_VERSION = "your-verified-api-version";
+```
+
+### 3. Consider Using api-key Header
+Some Azure OpenAI deployments use "api-key" instead of "Authorization" header:
+```java
+.addInterceptor(chain -> {
+    Request original = chain.request();
+    Request request = original.newBuilder()
+        .header("api-key", AZURE_API_KEY)  // Instead of Authorization: Bearer
+        .header("Content-Type", "application/json")
+        .method(original.method(), original.body())
+        .build();
+    return chain.proceed(request);
+})
+```
+
+### 4. Testing Without Building the App
+You can continue testing API settings using the Python scripts we created:
+- test_azure_api.py
+- test_azure_official.py
+- check_azure_url.py
+
+Update these scripts with new configuration values to quickly verify connections.
+
+### 5. Improved Error Handling
+We've enhanced the LLMRepository.java with:
+- Better error diagnostics and user-friendly messages
+- Connection verification on first use
+- Detailed logging of API errors
+
+This will help users understand issues with the API connection and provide actionable steps to resolve them.
+
+## Next Steps
+1. Verify the Azure OpenAI configuration details
+2. Update the app with the correct settings
+3. Test the connection using the Python scripts before building the app
+4. Consider using a mock implementation for development and testing until API issues are resolved 
