@@ -1,11 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="oval">
-    <solid android:color="#CCCCCC" />
-    <size
-        android:width="72dp"
-        android:height="72dp" />
-    <stroke
-        android:width="2dp"
-        android:color="#AAAAAA" />
-</shape>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    
+    <!-- Badge Background -->
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M60,60m-55,0a55,55 0,1 1,110 0a55,55 0,1 1,-110 0"/>
+    
+    <!-- Badge Inner Circle -->
+    <path
+        android:fillColor="#E8DEF8"
+        android:pathData="M60,60m-45,0a45,45 0,1 1,90 0a45,45 0,1 1,-90 0"/>
+    
+    <!-- Trophy -->
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M80,40H70V35H50V40H40C37.8,40 36,41.8 36,44V49C36,54.5 40.5,59 46,59H49C49,64 46,67 40,67V72H80V67C74,67 71,64 71,59H74C79.5,59 84,54.5 84,49V44C84,41.8 82.2,40 80,40ZM46,54C43.2,54 41,51.8 41,49V45H46V49C46,51 46.4,52.4 47,54H46ZM74,54H73C73.6,52.4 74,51 74,49V45H79V49C79,51.8 76.8,54 74,54Z"/>
+    
+    <!-- Star -->
+    <path
+        android:fillColor="#FFCA28"
+        android:pathData="M60,30L64.5,39.3L75,41.1L67.5,48.4L69.1,58.9L60,53.9L50.9,58.9L52.5,48.4L45,41.1L55.5,39.3L60,30Z"/>
+</vector>

@@ -8,6 +8,7 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
 import com.projet.skilllearn.view.fragments.ContentFragment;
+import com.projet.skilllearn.view.fragments.LLMChatFragment;
 import com.projet.skilllearn.view.fragments.NotesFragment;
 import com.projet.skilllearn.view.fragments.QuizFragment;
 
@@ -18,6 +19,7 @@ public class CoursePagerAdapter extends FragmentStateAdapter {
     private final ContentFragment contentFragment;
     private final NotesFragment notesFragment;
     private final QuizFragment quizFragment;
+    private final LLMChatFragment llmChatFragment;
 
     public CoursePagerAdapter(@NonNull FragmentActivity fragmentActivity) {
         super(fragmentActivity);
@@ -27,6 +29,7 @@ public class CoursePagerAdapter extends FragmentStateAdapter {
         contentFragment = ContentFragment.getInstance();
         notesFragment = NotesFragment.getInstance();
         quizFragment = QuizFragment.getInstance();
+        llmChatFragment = new LLMChatFragment();
     }
 
     @NonNull
@@ -41,6 +44,8 @@ public class CoursePagerAdapter extends FragmentStateAdapter {
                 return notesFragment;
             case 2:
                 return quizFragment;
+            case 3:
+                return llmChatFragment;
             default:
                 return contentFragment;
         }
@@ -48,6 +53,6 @@ public class CoursePagerAdapter extends FragmentStateAdapter {
 
     @Override
     public int getItemCount() {
-        return 3; // Contenu, Notes, Quiz
+        return 4; // Contenu, Notes, Quiz, Assistant IA
     }
 }

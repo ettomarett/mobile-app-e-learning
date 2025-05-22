@@ -32,45 +32,20 @@ public class UserProgressManager {
     private final FirebaseDatabase database;
     private final FirebaseAuth auth;
     private ProgressUpdateListener progressUpdateListener;
+    private BadgeAwardedListener badgeAwardedListener;
+
+    // Constants for achievement types
+    public static final String ACHIEVEMENT_TYPE_MILESTONE = "milestone";
+    public static final String ACHIEVEMENT_TYPE_COURSE_COMPLETION = "course_completion";
+    public static final String ACHIEVEMENT_TYPE_STREAK = "streak";
+    public static final String ACHIEVEMENT_TYPE_SPECIAL = "special";
+    public static final String ACHIEVEMENT_TYPE_CATEGORY_MASTER = "category_master";
 
     /**
-     * Initialise les données de progression pour un nouvel utilisateur
-     * @param userId ID de l'utilisateur
+     * Interface pour les notifications d'obtention de badge
      */
-    public void initializeUserProgress(String userId) {
-        if (userId == null || userId.isEmpty()) {
-            return;
-        }
-
-        DatabaseReference userProgressRef = database.getReference("user_progress").child(userId);
-
-        // Vérifier si l'utilisateur a déjà des données de progression
-        userProgressRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (!snapshot.exists()) {
-                    // Créer un nœud vide pour la progression de l'utilisateur
-                    userProgressRef.setValue(new HashMap<>());
-
-                    // Créer un badge pour le premier jour
-                    Achievement firstDayAchievement = new Achievement(
-                            "first_day",
-                            "Premier jour",
-                            "Bienvenue sur SkillLearn !",
-                            "milestone",
-                            System.currentTimeMillis()
-                    );
-
-                    // Ajouter le badge
-                    addAchievement(firstDayAchievement);
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                // Gérer l'erreur si nécessaire
-            }
-        });
+    public interface BadgeAwardedListener {
+        void onBadgeAwarded(Achievement achievement);
     }
 
     /**
@@ -129,6 +104,56 @@ public class UserProgressManager {
      */
     public void setProgressUpdateListener(ProgressUpdateListener listener) {
         this.progressUpdateListener = listener;
+    }
+
+    /**
+     * Définit un écouteur pour les badges obtenus
+     * @param listener l'écouteur
+     */
+    public void setBadgeAwardedListener(BadgeAwardedListener listener) {
+        this.badgeAwardedListener = listener;
+    }
+
+    /**
+     * Initialise les données de progression pour un nouvel utilisateur
+     * @param userId ID de l'utilisateur
+     */
+    public void initializeUserProgress(String userId) {
+        if (userId == null || userId.isEmpty()) {
+            return;
+        }
+
+        DatabaseReference userProgressRef = database.getReference("user_progress").child(userId);
+
+        // Vérifier si l'utilisateur a déjà des données de progression
+        userProgressRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (!snapshot.exists()) {
+                    // Créer un nœud vide pour la progression de l'utilisateur
+                    userProgressRef.setValue(new HashMap<>());
+
+                    // Créer un badge pour le premier jour
+                    Achievement firstDayAchievement = new Achievement(
+                            "first_day",
+                            "Premier jour",
+                            "Bienvenue sur SkillLearn !",
+                            ACHIEVEMENT_TYPE_MILESTONE,
+                            System.currentTimeMillis()
+                    );
+                    firstDayAchievement.setIconUrl("https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Ffirst_day.png");
+
+                    // Ajouter le badge
+                    addAchievement(firstDayAchievement);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                // Gérer l'erreur si nécessaire
+                Log.e(TAG, "Error initializing user progress", error.toException());
+            }
+        });
     }
 
     /**
@@ -193,11 +218,15 @@ public class UserProgressManager {
                     Log.d(TAG, "Section marquée comme terminée avec succès");
                     // Mettre à jour la progression globale
                     updateSectionProgress(courseId, totalSections);
+                    
+                    // Check achievements for section completions
+                    checkSectionAchievements(courseId);
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Erreur lors du marquage de la section comme terminée", e);
                 });
     }
+
     /**
      * Récupère le progrès d'un utilisateur pour un cours spécifique
      * @param courseId ID du cours
@@ -386,6 +415,7 @@ public class UserProgressManager {
             }
         });
     }
+
     /**
      * Vérifie si un cours est complété et décerne un badge si nécessaire
      * @param courseId ID du cours
@@ -402,24 +432,38 @@ public class UserProgressManager {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 String courseTitle = snapshot.child("title").getValue(String.class);
+                String category = snapshot.child("category").getValue(String.class);
+                
                 if (courseTitle != null) {
                     // Créer un succès pour le cours complété
                     Achievement achievement = new Achievement(
                             "course_completed_" + courseId,
                             "Cours terminé : " + courseTitle,
                             "Vous avez terminé le cours avec succès",
-                            "course_completion",
+                            ACHIEVEMENT_TYPE_COURSE_COMPLETION,
                             System.currentTimeMillis()
                     );
+                    
+                    // Set an icon based on the course category
+                    achievement.setIconUrl(getIconUrlForCategory(category));
 
                     // Ajouter le succès
                     addAchievement(achievement);
+                    
+                    // Check for category mastery
+                    if (category != null && !category.isEmpty()) {
+                        checkCategoryMastery(category);
+                    }
+                    
+                    // Check for multiple course completions
+                    checkMultipleCourseAchievements();
                 }
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 // Gérer l'erreur
+                Log.e(TAG, "Error checking course completion", error.toException());
             }
         });
     }
@@ -444,7 +488,7 @@ public class UserProgressManager {
                             "first_course",
                             "Premier pas",
                             "Vous avez commencé votre premier cours",
-                            "milestone",
+                            ACHIEVEMENT_TYPE_MILESTONE,
                             System.currentTimeMillis()
                     );
 
@@ -456,6 +500,255 @@ public class UserProgressManager {
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 // Gérer l'erreur
+            }
+        });
+    }
+
+    /**
+     * Vérifie les réalisations liées au nombre de sections complétées
+     */
+    private void checkSectionAchievements(String courseId) {
+        if (auth.getCurrentUser() == null) {
+            return;
+        }
+
+        String userId = auth.getCurrentUser().getUid();
+        DatabaseReference progressRef = database.getReference("user_progress").child(userId);
+        
+        progressRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                int totalCompletedSections = 0;
+                
+                // Count all completed sections across all courses
+                for (DataSnapshot courseSnapshot : snapshot.getChildren()) {
+                    if (courseSnapshot.hasChild("sections")) {
+                        for (DataSnapshot sectionSnapshot : courseSnapshot.child("sections").getChildren()) {
+                            Boolean completed = sectionSnapshot.child("completed").getValue(Boolean.class);
+                            if (completed != null && completed) {
+                                totalCompletedSections++;
+                            }
+                        }
+                    }
+                }
+                
+                // Check for section milestone achievements
+                checkSectionMilestones(totalCompletedSections);
+            }
+            
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e(TAG, "Error checking section achievements", error.toException());
+            }
+        });
+    }
+    
+    /**
+     * Vérifie si l'utilisateur a atteint des jalons de sections complétées
+     */
+    private void checkSectionMilestones(int totalCompletedSections) {
+        // First section completed
+        if (totalCompletedSections == 1) {
+            Achievement achievement = new Achievement(
+                    "first_section",
+                    "Premier pas",
+                    "Vous avez terminé votre première section de cours",
+                    ACHIEVEMENT_TYPE_MILESTONE,
+                    System.currentTimeMillis()
+            );
+            achievement.setIconUrl("https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Ffirst_section.png");
+            addAchievement(achievement);
+        }
+        
+        // 5 sections completed
+        if (totalCompletedSections == 5) {
+            Achievement achievement = new Achievement(
+                    "five_sections",
+                    "Apprenti débutant",
+                    "Vous avez terminé 5 sections de cours",
+                    ACHIEVEMENT_TYPE_MILESTONE,
+                    System.currentTimeMillis()
+            );
+            achievement.setIconUrl("https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Ffive_sections.png");
+            addAchievement(achievement);
+        }
+        
+        // 25 sections completed
+        if (totalCompletedSections == 25) {
+            Achievement achievement = new Achievement(
+                    "twenty_five_sections",
+                    "Apprenant confirmé",
+                    "Vous avez terminé 25 sections de cours",
+                    ACHIEVEMENT_TYPE_MILESTONE,
+                    System.currentTimeMillis()
+            );
+            achievement.setIconUrl("https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Ftwenty_five_sections.png");
+            addAchievement(achievement);
+        }
+        
+        // 50 sections completed
+        if (totalCompletedSections == 50) {
+            Achievement achievement = new Achievement(
+                    "fifty_sections",
+                    "Expert en apprentissage",
+                    "Vous avez terminé 50 sections de cours",
+                    ACHIEVEMENT_TYPE_MILESTONE,
+                    System.currentTimeMillis()
+            );
+            achievement.setIconUrl("https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Ffifty_sections.png");
+            addAchievement(achievement);
+        }
+        
+        // 100 sections completed
+        if (totalCompletedSections == 100) {
+            Achievement achievement = new Achievement(
+                    "hundred_sections",
+                    "Maître étudiant",
+                    "Vous avez terminé 100 sections de cours",
+                    ACHIEVEMENT_TYPE_MILESTONE,
+                    System.currentTimeMillis()
+            );
+            achievement.setIconUrl("https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fhundred_sections.png");
+            addAchievement(achievement);
+        }
+    }
+    
+    /**
+     * Vérifie si l'utilisateur a terminé plusieurs cours dans une catégorie
+     */
+    private void checkCategoryMastery(String category) {
+        if (auth.getCurrentUser() == null) {
+            return;
+        }
+
+        String userId = auth.getCurrentUser().getUid();
+        DatabaseReference progressRef = database.getReference("user_progress").child(userId);
+        DatabaseReference coursesRef = database.getReference("courses");
+        
+        progressRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot progressSnapshot) {
+                // Get all completed courses
+                List<String> completedCourseIds = new ArrayList<>();
+                for (DataSnapshot courseSnapshot : progressSnapshot.getChildren()) {
+                    Integer percentage = courseSnapshot.child("percentage").getValue(Integer.class);
+                    if (percentage != null && percentage >= 100) {
+                        completedCourseIds.add(courseSnapshot.getKey());
+                    }
+                }
+                
+                if (completedCourseIds.isEmpty()) {
+                    return;
+                }
+                
+                // Now check which of these courses belong to the specified category
+                coursesRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot coursesSnapshot) {
+                        int coursesInCategory = 0;
+                        
+                        for (String courseId : completedCourseIds) {
+                            DataSnapshot courseSnapshot = coursesSnapshot.child(courseId);
+                            String courseCategory = courseSnapshot.child("category").getValue(String.class);
+                            
+                            if (category.equals(courseCategory)) {
+                                coursesInCategory++;
+                            }
+                        }
+                        
+                        // Award badges based on number of courses completed in the category
+                        if (coursesInCategory == 3) {
+                            Achievement achievement = new Achievement(
+                                    "category_master_" + category.toLowerCase().replace(" ", "_"),
+                                    "Expert en " + category,
+                                    "Vous avez terminé 3 cours dans la catégorie " + category,
+                                    ACHIEVEMENT_TYPE_CATEGORY_MASTER,
+                                    System.currentTimeMillis()
+                            );
+                            achievement.setIconUrl(getCategoryMasteryIconUrl(category));
+                            addAchievement(achievement);
+                        }
+                    }
+                    
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Log.e(TAG, "Error checking category mastery", error.toException());
+                    }
+                });
+            }
+            
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e(TAG, "Error checking category mastery", error.toException());
+            }
+        });
+    }
+    
+    /**
+     * Vérifie les réalisations liées au nombre de cours complétés
+     */
+    private void checkMultipleCourseAchievements() {
+        if (auth.getCurrentUser() == null) {
+            return;
+        }
+
+        String userId = auth.getCurrentUser().getUid();
+        DatabaseReference progressRef = database.getReference("user_progress").child(userId);
+        
+        progressRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                int completedCourses = 0;
+                
+                // Count all completed courses
+                for (DataSnapshot courseSnapshot : snapshot.getChildren()) {
+                    Integer percentage = courseSnapshot.child("percentage").getValue(Integer.class);
+                    if (percentage != null && percentage >= 100) {
+                        completedCourses++;
+                    }
+                }
+                
+                // Award badges based on number of completed courses
+                if (completedCourses == 1) {
+                    Achievement achievement = new Achievement(
+                            "first_course_complete",
+                            "Premier cours terminé",
+                            "Vous avez terminé votre premier cours avec succès",
+                            ACHIEVEMENT_TYPE_MILESTONE,
+                            System.currentTimeMillis()
+                    );
+                    achievement.setIconUrl("https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Ffirst_course_complete.png");
+                    addAchievement(achievement);
+                }
+                
+                if (completedCourses == 5) {
+                    Achievement achievement = new Achievement(
+                            "five_courses_complete",
+                            "Apprenant assidu",
+                            "Vous avez terminé 5 cours avec succès",
+                            ACHIEVEMENT_TYPE_MILESTONE,
+                            System.currentTimeMillis()
+                    );
+                    achievement.setIconUrl("https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Ffive_courses_complete.png");
+                    addAchievement(achievement);
+                }
+                
+                if (completedCourses == 10) {
+                    Achievement achievement = new Achievement(
+                            "ten_courses_complete",
+                            "Chercheur de savoir",
+                            "Vous avez terminé 10 cours avec succès",
+                            ACHIEVEMENT_TYPE_MILESTONE,
+                            System.currentTimeMillis()
+                    );
+                    achievement.setIconUrl("https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Ften_courses_complete.png");
+                    addAchievement(achievement);
+                }
+            }
+            
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e(TAG, "Error checking multiple course achievements", error.toException());
             }
         });
     }
@@ -479,16 +772,82 @@ public class UserProgressManager {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (!snapshot.exists()) {
                     // Ajouter le succès s'il n'existe pas
-                    achievementRef.setValue(achievement);
+                    achievementRef.setValue(achievement)
+                        .addOnSuccessListener(aVoid -> {
+                            // Notify listeners about the new badge
+                            if (badgeAwardedListener != null) {
+                                badgeAwardedListener.onBadgeAwarded(achievement);
+                            }
+                            // Log the achievement
+                            Log.d(TAG, "New achievement earned: " + achievement.getTitle());
+                        });
                 }
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 // Gérer l'erreur
+                Log.e(TAG, "Error adding achievement", error.toException());
             }
         });
     }
+
+    /**
+     * Récupère l'URL d'icône pour une catégorie
+     * @param category la catégorie
+     * @return l'URL de l'icône
+     */
+    private String getIconUrlForCategory(String category) {
+        if (category == null) {
+            return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fdefault_badge.png";
+        }
+        
+        switch (category.toLowerCase()) {
+            case "programmation":
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fprogrammation.png";
+            case "design":
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fdesign.png";
+            case "marketing":
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fmarketing.png";
+            case "langue":
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Flangue.png";
+            case "business":
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fbusiness.png";
+            case "développement personnel":
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fdeveloppement_personnel.png";
+            default:
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fdefault_badge.png";
+        }
+    }
+    
+    /**
+     * Récupère l'URL d'icône pour une maîtrise de catégorie
+     * @param category la catégorie
+     * @return l'URL de l'icône
+     */
+    private String getCategoryMasteryIconUrl(String category) {
+        if (category == null) {
+            return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fmastery_default.png";
+        }
+        
+        switch (category.toLowerCase()) {
+            case "programmation":
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fmastery_programmation.png";
+            case "design":
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fmastery_design.png";
+            case "marketing":
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fmastery_marketing.png";
+            case "langue":
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fmastery_langue.png";
+            case "business":
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fmastery_business.png";
+            case "développement personnel":
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fmastery_developpement_personnel.png";
+            default:
+                return "https://firebasestorage.googleapis.com/v0/b/skilllearn-app.appspot.com/o/badges%2Fmastery_default.png";
+        }
+    }
+
     private void checkProgressAchievements(String courseId, int percentage) {
         if (percentage >= 100) {
             // Cours terminé - ajouter un badge d'accomplissement
@@ -503,7 +862,7 @@ public class UserProgressManager {
                                 "course_completed_" + courseId,
                                 "Cours terminé : " + courseTitle,
                                 "Vous avez terminé le cours avec succès",
-                                "course_completion",
+                                ACHIEVEMENT_TYPE_COURSE_COMPLETION,
                                 System.currentTimeMillis()
                         );
 

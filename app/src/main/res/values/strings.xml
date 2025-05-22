@@ -46,9 +46,12 @@
     <string name="content">Contenu</string>
     <string name="notes">Notes</string>
     <string name="quiz">Quiz</string>
+    <string name="assistant_ia">Assistant IA</string>
     <string name="previous_section">Section précédente</string>
     <string name="next_section">Section suivante</string>
     <string name="mark_complete">Marquer comme terminé</string>
+    <string name="marking_complete">Traitement en cours...</string>
+    <string name="section_completed">Section terminée ✓</string>
     <string name="section_icon">Icône de section</string>
     <string name="new_note_hint">Ajouter une nouvelle note...</string>
     <string name="add">Ajouter</string>
@@ -57,6 +60,7 @@
     <string name="content_tab_description">Onglet de contenu du cours</string>
     <string name="notes_tab_description">Onglet de notes personnelles</string>
     <string name="quiz_tab_description">Onglet de quiz et évaluations</string>
+    <string name="assistant_ia_tab_description">Onglet d\'assistance par intelligence artificielle</string>
     <string name="tab_layout_description">Onglets de navigation du cours</string>
     <string name="navigation_tabs">Onglets de navigation du contenu</string>
 

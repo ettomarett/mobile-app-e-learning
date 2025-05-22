@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -19,6 +20,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.bumptech.glide.Glide;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.Player;
@@ -32,6 +34,7 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener;
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView;
 import com.projet.skilllearn.R;
+import com.projet.skilllearn.model.Achievement;
 import com.projet.skilllearn.model.Course;
 import com.projet.skilllearn.model.CourseSection;
 import com.projet.skilllearn.utils.UserProgressManager;
@@ -47,7 +50,10 @@ import java.util.regex.Pattern;
 
 public class CoursePlayerActivity extends AppCompatActivity implements
         CourseSectionAdapter.OnSectionClickListener,
-        Player.Listener {
+        Player.Listener,
+        UserProgressManager.BadgeAwardedListener {
+
+    private static final String TAG = "CoursePlayerActivity";
 
     private FrameLayout videoContainer;
     private PlayerView playerView;
@@ -97,6 +103,7 @@ public class CoursePlayerActivity extends AppCompatActivity implements
 
         // Initialiser le gestionnaire de progrès
         progressManager = UserProgressManager.getInstance();
+        progressManager.setBadgeAwardedListener(this);
 
         // Initialiser les lecteurs vidéo
         initializePlayer();
@@ -160,7 +167,7 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         viewPager.setAdapter(pagerAdapter);
 
         // Conserver les fragments en mémoire
-        viewPager.setOffscreenPageLimit(2);
+        viewPager.setOffscreenPageLimit(3);
 
         // Configurer les onglets
         new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
@@ -174,6 +181,9 @@ public class CoursePlayerActivity extends AppCompatActivity implements
                     break;
                 case 2:
                     tabText = getString(R.string.quiz);
+                    break;
+                case 3:
+                    tabText = getString(R.string.assistant_ia);
                     break;
                 default:
                     tabText = "Tab " + (position + 1);
@@ -200,6 +210,8 @@ public class CoursePlayerActivity extends AppCompatActivity implements
                 return getString(R.string.notes_tab_description);
             case 2:
                 return getString(R.string.quiz_tab_description);
+            case 3:
+                return getString(R.string.assistant_ia_tab_description);
             default:
                 return "Tab " + (tabPosition + 1);
         }
@@ -412,7 +424,8 @@ public class CoursePlayerActivity extends AppCompatActivity implements
     }
 
     private void updateCompleteButtonState() {
-        btnMarkComplete.setEnabled(videoCompleted || videoContainer.getVisibility() == View.GONE);
+        // Enable the button regardless of video completion status
+        btnMarkComplete.setEnabled(true);
     }
 
     private void navigateToPreviousSection() {
@@ -436,9 +449,18 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
         String sectionId = sections.get(currentSectionIndex).getSectionId();
 
+        // Change button state to indicate it's processing
+        btnMarkComplete.setEnabled(false);
+        btnMarkComplete.setText(R.string.marking_complete);
+
         progressManager.markSectionCompleted(courseId, sectionId, sections.size());
 
-        Toast.makeText(this, "Section marquée comme terminée", Toast.LENGTH_SHORT).show();
+        // Re-enable button with success message
+        btnMarkComplete.setEnabled(true);
+        btnMarkComplete.setText(R.string.section_completed);
+
+        // Disable the button after completion
+        btnMarkComplete.setEnabled(false);
 
         // Vérifier s'il y a une autre section
         if (currentSectionIndex < sections.size() - 1) {
@@ -524,5 +546,53 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    /**
+     * Called when a new badge is earned
+     */
+    @Override
+    public void onBadgeAwarded(Achievement achievement) {
+        runOnUiThread(() -> {
+            showBadgeEarnedDialog(achievement);
+        });
+    }
+
+    /**
+     * Shows a dialog when a badge is earned
+     */
+    private void showBadgeEarnedDialog(Achievement achievement) {
+        View badgeView = getLayoutInflater().inflate(R.layout.dialog_badge_earned, null);
+        
+        TextView tvBadgeTitle = badgeView.findViewById(R.id.badge_title);
+        TextView tvBadgeDescription = badgeView.findViewById(R.id.badge_description);
+        ImageView ivBadgeIcon = badgeView.findViewById(R.id.badge_icon);
+        
+        tvBadgeTitle.setText(achievement.getTitle());
+        tvBadgeDescription.setText(achievement.getDescription());
+        
+        // Load badge icon if available
+        if (achievement.getIconUrl() != null && !achievement.getIconUrl().isEmpty()) {
+            // Using Glide to load the image
+            try {
+                Glide.with(this)
+                    .load(achievement.getIconUrl())
+                    .placeholder(R.drawable.placeholder_badge)
+                    .error(R.drawable.placeholder_badge)
+                    .into(ivBadgeIcon);
+            } catch (Exception e) {
+                Log.e(TAG, "Error loading badge icon", e);
+                ivBadgeIcon.setImageResource(R.drawable.placeholder_badge);
+            }
+        } else {
+            ivBadgeIcon.setImageResource(R.drawable.placeholder_badge);
+        }
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+            .setTitle("Badge obtenu !")
+            .setView(badgeView)
+            .setPositiveButton("Super !", null);
+            
+        builder.create().show();
     }
 }
