@@ -1,5 +1,6 @@
 package com.projet.skilllearn.view.fragments;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -16,7 +17,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.progressindicator.LinearProgressIndicator;
+import com.google.android.material.snackbar.Snackbar;
 import com.projet.skilllearn.R;
+import com.projet.skilllearn.repository.CourseRepository;
+import com.projet.skilllearn.utils.CourseCreatedDialogHelper;
+import com.projet.skilllearn.view.CourseDetailActivity;
 import com.projet.skilllearn.view.adapters.LLMChatAdapter;
 import com.projet.skilllearn.viewmodel.LLMViewModel;
 
@@ -30,6 +36,7 @@ public class LLMChatFragment extends Fragment {
     private EditText messageInput;
     private RecyclerView recyclerView;
     private MaterialButton sendButton;
+    private LinearProgressIndicator progressIndicator;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -52,6 +59,11 @@ public class LLMChatFragment extends Fragment {
         recyclerView = view.findViewById(R.id.chatRecyclerView);
         messageInput = view.findViewById(R.id.messageInput);
         sendButton = view.findViewById(R.id.sendButton);
+        progressIndicator = view.findViewById(R.id.progressIndicator);
+        
+        if (progressIndicator == null) {
+            Log.w(TAG, "Progress indicator not found in layout, course creation progress will not be displayed");
+        }
         
         // Set up adapter
         adapter = new LLMChatAdapter();
@@ -66,6 +78,38 @@ public class LLMChatFragment extends Fragment {
             }
         });
         
+        // Observe course creation state
+        viewModel.getIsCreatingCourse().observe(getViewLifecycleOwner(), isCreating -> {
+            if (progressIndicator != null) {
+                progressIndicator.setVisibility(isCreating ? View.VISIBLE : View.GONE);
+            }
+            sendButton.setEnabled(!isCreating);
+            messageInput.setEnabled(!isCreating);
+            
+            if (isCreating) {
+                showToast("Création de cours en cours...");
+            }
+        });
+        
+        // Observe course creation success
+        viewModel.getCreatedCourseId().observe(getViewLifecycleOwner(), courseId -> {
+            if (courseId != null && getContext() != null) {
+                // Show the course created dialog
+                CourseCreatedDialogHelper.showCourseCreatedDialog(getContext(), courseId);
+                
+                // Reset the state
+                viewModel.resetCourseCreationState();
+            }
+        });
+        
+        // Observe course creation error
+        viewModel.getCourseCreationError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null) {
+                showToast("Erreur: " + error);
+                viewModel.resetCourseCreationState();
+            }
+        });
+        
         // Set up send button
         sendButton.setOnClickListener(v -> {
             String message = messageInput.getText().toString().trim();
@@ -74,5 +118,15 @@ public class LLMChatFragment extends Fragment {
                 messageInput.setText("");
             }
         });
+    }
+    
+    /**
+     * Show a toast message
+     * @param message the message to show
+     */
+    private void showToast(String message) {
+        if (isAdded() && getContext() != null) {
+            Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+        }
     }
 } 

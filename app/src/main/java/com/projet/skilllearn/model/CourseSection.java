@@ -8,6 +8,7 @@ public class CourseSection {
     private String content;
     private String videoUrl;
     private Quiz quiz;
+    private String quizId;
     private int durationMinutes;
     private int orderIndex;
 
@@ -78,6 +79,14 @@ public class CourseSection {
 
     public void setQuiz(Quiz quiz) {
         this.quiz = quiz;
+    }
+    
+    public String getQuizId() {
+        return quizId;
+    }
+    
+    public void setQuizId(String quizId) {
+        this.quizId = quizId;
     }
 
     public int getDurationMinutes() {

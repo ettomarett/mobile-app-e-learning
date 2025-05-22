@@ -5,15 +5,16 @@ import java.util.List;
 public class Quiz {
     private String quizId;
     private String title;
-    private List<QuizQuestion> questions;
+    private List<Question> questions;
     private int passingScore;
     private boolean required;
+    private String sectionId;
 
-    // Constructeur par défaut pour Firebase
+    // Default constructor for Firebase
     public Quiz() {
     }
 
-    public Quiz(String quizId, String title, List<QuizQuestion> questions, int passingScore, boolean required) {
+    public Quiz(String quizId, String title, List<Question> questions, int passingScore, boolean required) {
         this.quizId = quizId;
         this.title = title;
         this.questions = questions;
@@ -21,7 +22,7 @@ public class Quiz {
         this.required = required;
     }
 
-    // Getters et setters
+    // Getters and setters
     public String getQuizId() {
         return quizId;
     }
@@ -38,11 +39,11 @@ public class Quiz {
         this.title = title;
     }
 
-    public List<QuizQuestion> getQuestions() {
+    public List<Question> getQuestions() {
         return questions;
     }
 
-    public void setQuestions(List<QuizQuestion> questions) {
+    public void setQuestions(List<Question> questions) {
         this.questions = questions;
     }
 
@@ -60,5 +61,13 @@ public class Quiz {
 
     public void setRequired(boolean required) {
         this.required = required;
+    }
+    
+    public String getSectionId() {
+        return sectionId;
+    }
+    
+    public void setSectionId(String sectionId) {
+        this.sectionId = sectionId;
     }
 }

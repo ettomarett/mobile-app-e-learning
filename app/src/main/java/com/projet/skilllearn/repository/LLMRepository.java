@@ -9,11 +9,14 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.projet.skilllearn.model.LLMMessage;
+import com.projet.skilllearn.utils.FirebaseCourseParser;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -43,6 +46,26 @@ public class LLMRepository {
     
     // Flag to control whether to show thinking process
     private boolean showThinking = false;
+    
+    // Callback for course creation
+    private CourseCreationCallback courseCreationCallback = null;
+
+    /**
+     * Interface for course creation callbacks
+     */
+    public interface CourseCreationCallback {
+        void onCourseCreationStarted();
+        void onCourseCreated(String courseId);
+        void onCourseCreationFailed(String error);
+    }
+    
+    /**
+     * Set the course creation callback
+     * @param callback the callback
+     */
+    public void setCourseCreationCallback(CourseCreationCallback callback) {
+        this.courseCreationCallback = callback;
+    }
 
     /**
      * Constructor
@@ -87,6 +110,66 @@ public class LLMRepository {
     }
     
     /**
+     * Add a system message to the chat history
+     * @param content the message content
+     */
+    public void addSystemMessage(String content) {
+        LLMMessage systemMessage = new LLMMessage("assistant", content, false);
+        messages.add(systemMessage);
+        chatHistory.postValue(new ArrayList<>(messages));
+    }
+    
+    /**
+     * Process the LLM response for course creation
+     * @param content the LLM response content
+     */
+    private void processForCourseCreation(String content) {
+        // Check if the response contains a course creation request
+        if (content.contains("<FirebaseCourse>") && content.contains("</FirebaseCourse>")) {
+            Log.d(TAG, "Course creation detected in LLM response");
+            
+            // Notify callback about course creation starting
+            if (courseCreationCallback != null) {
+                courseCreationCallback.onCourseCreationStarted();
+            }
+            
+            // Add a system message indicating course creation
+            addSystemMessage("Création de cours en cours...");
+            
+            // Parse and upload the course
+            FirebaseCourseParser.parseAndUploadCourse(content, new FirebaseCourseParser.FirebaseCallback() {
+                @Override
+                public void onSuccess(String courseId) {
+                    Log.d(TAG, "Course created successfully: " + courseId);
+                    
+                    // Add a success message
+                    addSystemMessage("✅ Cours créé avec succès ! \n\nID: " + courseId);
+                    
+                    // Notify callback
+                    if (courseCreationCallback != null) {
+                        courseCreationCallback.onCourseCreated(courseId);
+                    }
+                }
+                
+                @Override
+                public void onError(String errorMessage) {
+                    Log.e(TAG, "Course creation failed: " + errorMessage);
+                    
+                    // Add an error message
+                    addSystemMessage("❌ Erreur lors de la création du cours: " + errorMessage);
+                    
+                    // Notify callback
+                    if (courseCreationCallback != null) {
+                        courseCreationCallback.onCourseCreationFailed(errorMessage);
+                    }
+                }
+            });
+            
+            return;
+        }
+    }
+    
+    /**
      * Make an API request with the known working configuration
      */
     private void makeApiRequest() {
@@ -101,7 +184,51 @@ public class LLMRepository {
         // Add system message
         JsonObject systemMessage = new JsonObject();
         systemMessage.addProperty("role", "system");
-        systemMessage.addProperty("content", "You are a helpful learning assistant for an e-learning app called SkillLearn. Provide concise, informative responses. When appropriate, include references to learning materials. Be friendly and encouraging.");
+        systemMessage.addProperty("content", 
+            "You are a helpful learning assistant for an e-learning app called SkillLearn. " +
+            "Provide concise, informative responses. When appropriate, include references to learning materials. " +
+            "Be friendly and encouraging.\n\n" +
+            "To create course content for the SkillLearn app, use the following syntax:\n\n" +
+            "<FirebaseCourse>\n" +
+            "  <CourseDetails>\n" +
+            "    title: [Course Title]\n" +
+            "    description: [Detailed course description]\n" +
+            "    category: [Course Category]\n" +
+            "    level: [Débutant|Intermédiaire|Expert]\n" +
+            "    durationMinutes: [Total duration in minutes]\n" +
+            "    tags: [Comma separated tags]\n" +
+            "    imageUrl: [URL to course image]\n" +
+            "  </CourseDetails>\n" +
+            "  \n" +
+            "  <Section>\n" +
+            "    title: [Section title]\n" +
+            "    description: [Brief section description]\n" +
+            "    durationMinutes: [Section duration in minutes]\n" +
+            "    orderIndex: [Order in course, starting from 0]\n" +
+            "    content: [HTML content with <p> tags]\n" +
+            "    videoUrl: [YouTube video URL]\n" +
+            "  </Section>\n" +
+            "  \n" +
+            "  [Additional sections...]\n" +
+            "  \n" +
+            "  [MANDATORY: Each section MUST have a corresponding quiz:]\n" +
+            "  <Quiz>\n" +
+            "    title: [Quiz title - should match related section title]\n" +
+            "    passingScore: [Score needed to pass, e.g., 70]\n" +
+            "    \n" +
+            "    <Question>\n" +
+            "      question: [Question text]\n" +
+            "      options: [Option A|Option B|Option C|Option D]\n" +
+            "      correctOptionIndex: [Index of correct option (0-3)]\n" +
+            "      explanation: [Explanation for the answer]\n" +
+            "    </Question>\n" +
+            "    \n" +
+            "    [IMPORTANT: Each quiz MUST have at least 3 questions]\n" +
+            "  </Quiz>\n" +
+            "</FirebaseCourse>\n\n" +
+            "When you receive a request to create course content, generate the full course structure following this syntax. " +
+            "IMPORTANT: Each section must have a corresponding quiz with at least 3 questions."
+        );
         messagesArray.add(systemMessage);
         
         // Add conversation history - but limit to just the latest few messages
@@ -125,7 +252,7 @@ public class LLMRepository {
         
         // Set request parameters
         requestBody.add("messages", messagesArray);
-        requestBody.addProperty("max_tokens", 800);
+        requestBody.addProperty("max_tokens", 2500);
         requestBody.addProperty("temperature", 0.7);
         
         // Build URL with the exact format that works
@@ -178,6 +305,9 @@ public class LLMRepository {
                             LLMMessage assistantMessage = new LLMMessage("assistant", processedContent, false);
                             messages.add(assistantMessage);
                             chatHistory.postValue(new ArrayList<>(messages));
+                            
+                            // Process for course creation
+                            processForCourseCreation(content);
                         });
                     } catch (Exception e) {
                         Log.e(TAG, "Error parsing API response: " + e.getMessage());

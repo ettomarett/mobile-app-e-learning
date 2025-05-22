@@ -43,6 +43,13 @@ import com.projet.skilllearn.view.adapters.CourseSectionAdapter;
 import com.projet.skilllearn.view.fragments.ContentFragment;
 import com.projet.skilllearn.view.fragments.QuizFragment;
 import com.projet.skilllearn.viewmodel.CourseViewModel;
+import com.projet.skilllearn.utils.VideoDownloadManager;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.widget.Button;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import java.io.File;
 
 import java.util.List;
 import java.util.regex.Matcher;
@@ -54,6 +61,7 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         UserProgressManager.BadgeAwardedListener {
 
     private static final String TAG = "CoursePlayerActivity";
+    private static final int STORAGE_PERMISSION_CODE = 1001;
 
     private FrameLayout videoContainer;
     private PlayerView playerView;
@@ -63,16 +71,17 @@ public class CoursePlayerActivity extends AppCompatActivity implements
     private TextView tvTitle;
     private TextView tvDescription;
     private ProgressBar progressBar;
-    // Type modifié pour correspondre au XML
-    private MaterialButton btnPrevious;
-    private MaterialButton btnNext;
+    private Button btnPrevious;
+    private Button btnNext;
     private MaterialButton btnMarkComplete;
+    private Button btnDownloadVideo;
     private ViewPager2 viewPager;
     private TabLayout tabLayout;
     private RecyclerView rvSections;
 
     private CourseViewModel viewModel;
     private UserProgressManager progressManager;
+    private VideoDownloadManager downloadManager;
     private String courseId;
     private String sectionId;
     private List<CourseSection> sections;
@@ -105,6 +114,9 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         progressManager = UserProgressManager.getInstance();
         progressManager.setBadgeAwardedListener(this);
 
+        // Initialiser le gestionnaire de téléchargement
+        downloadManager = VideoDownloadManager.getInstance(this);
+
         // Initialiser les lecteurs vidéo
         initializePlayer();
 
@@ -121,6 +133,9 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         // Observer les données du ViewModel
         observeViewModel();
 
+        // Observer les statuts de téléchargement
+        observeDownloadStatus();
+
         // Charger le cours
         viewModel.selectCourse(courseId);
     }
@@ -136,6 +151,7 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             btnPrevious = findViewById(R.id.btn_previous);
             btnNext = findViewById(R.id.btn_next);
             btnMarkComplete = findViewById(R.id.btn_mark_complete);
+            btnDownloadVideo = findViewById(R.id.btn_download_video);
             viewPager = findViewById(R.id.view_pager);
             tabLayout = findViewById(R.id.tab_layout);
             rvSections = findViewById(R.id.rv_sections);
@@ -147,6 +163,7 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             btnPrevious.setOnClickListener(v -> navigateToPreviousSection());
             btnNext.setOnClickListener(v -> navigateToNextSection());
             btnMarkComplete.setOnClickListener(v -> markSectionAsCompleted());
+            btnDownloadVideo.setOnClickListener(v -> handleVideoDownload());
         } catch (Exception e) {
             Toast.makeText(this, "Erreur d'initialisation: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             finish();
@@ -289,16 +306,33 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         String videoUrl = section.getVideoUrl();
         if (videoUrl != null && !videoUrl.isEmpty()) {
             videoContainer.setVisibility(View.VISIBLE);
-
-            // Déterminer si c'est une vidéo YouTube ou une vidéo standard
-            if (isYouTubeUrl(videoUrl)) {
-                loadYouTubeVideo(getYouTubeVideoId(videoUrl));
+            
+            // Vérifier si la vidéo est disponible hors ligne
+            String localPath = downloadManager.getLocalVideoPath(courseId, section.getSectionId());
+            
+            if (localPath != null) {
+                // Vidéo téléchargée disponible, charger depuis le stockage local
+                loadLocalVideo(localPath);
+                // Mettre à jour le bouton de téléchargement
+                updateDownloadButton(true);
             } else {
-                loadStandardVideo(videoUrl);
+                // Aucune version locale, charger depuis l'URL
+                // Déterminer si c'est une vidéo YouTube ou une vidéo standard
+                if (isYouTubeUrl(videoUrl)) {
+                    loadYouTubeVideo(getYouTubeVideoId(videoUrl));
+                    // YouTube ne peut pas être téléchargé
+                    updateDownloadButton(false, true);
+                } else {
+                    loadStandardVideo(videoUrl);
+                    // Vidéo standard peut être téléchargée
+                    updateDownloadButton(false);
+                }
             }
         } else {
             videoContainer.setVisibility(View.GONE);
             stopAllPlayers();
+            // Cacher le bouton de téléchargement
+            btnDownloadVideo.setVisibility(View.GONE);
         }
 
         // Mettre à jour l'état des boutons de navigation
@@ -538,6 +572,7 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             youtubePlayerView.release();
         }
     }
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
@@ -594,5 +629,201 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             .setPositiveButton("Super !", null);
             
         builder.create().show();
+    }
+
+    /**
+     * Charger une vidéo locale
+     */
+    private void loadLocalVideo(String localPath) {
+        // Arrêter d'abord tous les lecteurs
+        stopAllPlayers();
+
+        playerView.setVisibility(View.VISIBLE);
+        youtubePlayerContainer.setVisibility(View.GONE);
+
+        File localFile = new File(localPath);
+        if (!localFile.exists()) {
+            Toast.makeText(this, "Erreur: Fichier vidéo local introuvable", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        MediaItem mediaItem = MediaItem.fromUri(Uri.fromFile(localFile));
+        player.setMediaItem(mediaItem);
+        player.prepare();
+        player.play();
+    }
+
+    /**
+     * Observer le statut des téléchargements
+     */
+    private void observeDownloadStatus() {
+        downloadManager.getDownloadStatus().observe(this, downloads -> {
+            if (sections == null || sections.isEmpty() || currentSectionIndex >= sections.size()) {
+                return;
+            }
+            
+            // Vérifier le statut de la section actuelle
+            CourseSection currentSection = sections.get(currentSectionIndex);
+            String fileKey = courseId + "_" + currentSection.getSectionId();
+            
+            if (downloads.containsKey(fileKey)) {
+                VideoDownloadManager.VideoDownloadInfo info = downloads.get(fileKey);
+                
+                if (info != null) {
+                    switch (info.getStatus()) {
+                        case VideoDownloadManager.VideoDownloadInfo.STATUS_COMPLETED:
+                            updateDownloadButton(true);
+                            break;
+                        case VideoDownloadManager.VideoDownloadInfo.STATUS_DOWNLOADING:
+                        case VideoDownloadManager.VideoDownloadInfo.STATUS_PENDING:
+                            btnDownloadVideo.setText("Téléchargement...");
+                            btnDownloadVideo.setEnabled(false);
+                            break;
+                        case VideoDownloadManager.VideoDownloadInfo.STATUS_FAILED:
+                            btnDownloadVideo.setText("Télécharger");
+                            btnDownloadVideo.setEnabled(true);
+                            Toast.makeText(this, "Échec du téléchargement", Toast.LENGTH_SHORT).show();
+                            break;
+                    }
+                }
+            }
+        });
+    }
+    
+    /**
+     * Mettre à jour l'apparence du bouton de téléchargement
+     */
+    private void updateDownloadButton(boolean isDownloaded) {
+        updateDownloadButton(isDownloaded, false);
+    }
+    
+    /**
+     * Mettre à jour l'apparence du bouton de téléchargement
+     * @param isDownloaded si la vidéo est téléchargée
+     * @param isYouTube si c'est une vidéo YouTube
+     */
+    private void updateDownloadButton(boolean isDownloaded, boolean isYouTube) {
+        if (isYouTube) {
+            // YouTube ne peut pas être téléchargé
+            btnDownloadVideo.setVisibility(View.VISIBLE);
+            btnDownloadVideo.setText("YouTube (non téléchargeable)");
+            btnDownloadVideo.setEnabled(false);
+        } else if (isDownloaded) {
+            // Vidéo déjà téléchargée
+            btnDownloadVideo.setVisibility(View.VISIBLE);
+            btnDownloadVideo.setText("Supprimer la vidéo hors ligne");
+            btnDownloadVideo.setEnabled(true);
+            btnDownloadVideo.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_delete, 0, 0, 0);
+        } else {
+            // Vidéo non téléchargée
+            btnDownloadVideo.setVisibility(View.VISIBLE);
+            btnDownloadVideo.setText("Télécharger pour regarder hors ligne");
+            btnDownloadVideo.setEnabled(true);
+            btnDownloadVideo.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_download, 0, 0, 0);
+        }
+    }
+    
+    /**
+     * Gérer le téléchargement ou la suppression de la vidéo
+     */
+    private void handleVideoDownload() {
+        if (sections == null || sections.isEmpty() || currentSectionIndex >= sections.size()) {
+            return;
+        }
+        
+        CourseSection section = sections.get(currentSectionIndex);
+        String videoUrl = section.getVideoUrl();
+        
+        if (videoUrl == null || videoUrl.isEmpty()) {
+            Toast.makeText(this, "Aucune vidéo disponible à télécharger", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Vérifier les permissions de stockage
+        if (!checkStoragePermission()) {
+            requestStoragePermission();
+            return;
+        }
+        
+        // Vérifier si la vidéo est déjà téléchargée
+        if (downloadManager.isVideoDownloaded(courseId, section.getSectionId())) {
+            // Demander confirmation avant de supprimer
+            new AlertDialog.Builder(this)
+                    .setTitle("Supprimer la vidéo")
+                    .setMessage("Voulez-vous vraiment supprimer cette vidéo téléchargée ?")
+                    .setPositiveButton("Oui", (dialog, which) -> {
+                        if (downloadManager.deleteVideo(courseId, section.getSectionId())) {
+                            Toast.makeText(this, "Vidéo supprimée", Toast.LENGTH_SHORT).show();
+                            updateDownloadButton(false);
+                            
+                            // Recharger la vidéo depuis l'URL
+                            if (!isYouTubeUrl(videoUrl)) {
+                                loadStandardVideo(videoUrl);
+                            }
+                        } else {
+                            Toast.makeText(this, "Échec de la suppression", Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .setNegativeButton("Non", null)
+                    .show();
+        } else {
+            // Télécharger la vidéo
+            if (isYouTubeUrl(videoUrl)) {
+                Toast.makeText(this, "Les vidéos YouTube ne peuvent pas être téléchargées", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            // Lancer le téléchargement
+            long downloadId = downloadManager.downloadVideo(
+                    videoUrl, 
+                    courseId, 
+                    section.getSectionId(), 
+                    section.getTitle()
+            );
+            
+            if (downloadId != -1) {
+                Toast.makeText(this, "Téléchargement démarré", Toast.LENGTH_SHORT).show();
+                btnDownloadVideo.setText("Téléchargement...");
+                btnDownloadVideo.setEnabled(false);
+            } else {
+                Toast.makeText(this, "Impossible de démarrer le téléchargement", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+    
+    /**
+     * Vérifier si la permission de stockage est accordée
+     */
+    private boolean checkStoragePermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) 
+                == PackageManager.PERMISSION_GRANTED;
+    }
+    
+    /**
+     * Demander la permission de stockage
+     */
+    private void requestStoragePermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                STORAGE_PERMISSION_CODE
+        );
+    }
+    
+    /**
+     * Gérer la réponse à la demande de permission
+     */
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        
+        if (requestCode == STORAGE_PERMISSION_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission accordée, réessayer le téléchargement
+                handleVideoDownload();
+            } else {
+                Toast.makeText(this, "Permission de stockage nécessaire pour télécharger des vidéos", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 }

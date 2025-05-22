@@ -16,6 +16,15 @@
         android:textSize="14sp"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/progressIndicator"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:indeterminate="true"
+        android:visibility="gone"
+        app:indicatorColor="@color/colorPrimary"
+        app:layout_constraintTop_toBottomOf="@id/assistantDescription" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/chatRecyclerView"
         android:layout_width="match_parent"
@@ -23,7 +32,7 @@
         android:padding="8dp"
         android:clipToPadding="false"
         app:layout_constraintBottom_toTopOf="@+id/messageInputLayout"
-        app:layout_constraintTop_toBottomOf="@id/assistantDescription" />
+        app:layout_constraintTop_toBottomOf="@id/progressIndicator" />
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/messageInputLayout"

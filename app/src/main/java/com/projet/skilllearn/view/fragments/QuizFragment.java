@@ -20,10 +20,11 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.projet.skilllearn.R;
 import com.projet.skilllearn.model.Achievement;
+import com.projet.skilllearn.model.Question;
 import com.projet.skilllearn.model.Quiz;
-import com.projet.skilllearn.model.QuizQuestion;
 import com.projet.skilllearn.utils.UserProgressManager;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,7 @@ public class QuizFragment extends Fragment {
     private TextView tvScore;
 
     private Quiz quiz;
-    private List<QuizQuestion> questions;
+    private List<Question> questions;
     private int currentQuestionIndex = 0;
     private int score = 0;
     private boolean answered = false;
@@ -134,7 +135,7 @@ public class QuizFragment extends Fragment {
             return;
         }
 
-        QuizQuestion question = questions.get(index);
+        Question question = questions.get(index);
         Log.d(TAG, "Question: " + question.getQuestion());
 
         tvQuestion.setText(question.getQuestion());
@@ -144,6 +145,10 @@ public class QuizFragment extends Fragment {
 
         // Ajouter les options
         List<String> options = question.getOptions();
+        if (options == null) {
+            options = new ArrayList<>();
+        }
+        
         Log.d(TAG, "Nombre d'options: " + options.size());
 
         for (int i = 0; i < options.size(); i++) {
@@ -191,7 +196,7 @@ public class QuizFragment extends Fragment {
             }
         }
 
-        QuizQuestion question = questions.get(currentQuestionIndex);
+        Question question = questions.get(currentQuestionIndex);
         int correctIndex = question.getCorrectOptionIndex();
         Log.d(TAG, "Option sélectionnée: " + selectedIndex + ", correcte: " + correctIndex);
 
