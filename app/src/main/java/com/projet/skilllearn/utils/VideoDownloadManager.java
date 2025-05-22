@@ -111,8 +111,8 @@ public class VideoDownloadManager {
             return -1;
         }
         
-        // Create a friendly filename
-        String fileName = sanitizeFileName(title) + "_" + sectionId + ".mp4";
+        // Create filename using courseId and sectionId only
+        String fileName = courseId + "_" + sectionId + ".mp4";
         
         // Set up download request
         DownloadManager.Request request = new DownloadManager.Request(Uri.parse(videoUrl))
@@ -204,8 +204,8 @@ public class VideoDownloadManager {
             return false;
         }
         
-        // Create a friendly filename
-        String fileName = sanitizeFileName(title) + "_" + sectionId + ".mp4";
+        // Create filename using courseId and sectionId only
+        String fileName = courseId + "_" + sectionId + ".mp4";
         
         // Get destination directory
         File destDir = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES);
@@ -415,7 +415,10 @@ public class VideoDownloadManager {
         // Get the movies directory
         File moviesDir = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES);
         if (moviesDir == null || !moviesDir.exists()) {
-            Log.d(TAG, "Movies directory does not exist");
+            Log.d(TAG, "Movies directory does not exist, creating it");
+            if (moviesDir != null) {
+                moviesDir.mkdirs();
+            }
             return;
         }
         
@@ -426,30 +429,29 @@ public class VideoDownloadManager {
             return;
         }
 
-        // Scan for video files
+        // Scan for all video files
         for (File file : files) {
-            if (file.isFile() && file.getName().endsWith(".mp4")) {
+            if (file.isFile() && isVideoFile(file.getName())) {
                 try {
-                    // Try to parse the filename to get courseId and sectionId
-                    // Expected format: sectionId.mp4
-                    String fileName = file.getName();
-                    String sectionId = fileName.substring(0, fileName.length() - 4); // Remove .mp4
+                    // Generate a unique ID for this video
+                    String uniqueId = UUID.randomUUID().toString();
                     
                     // Create a download info object
                     VideoDownloadInfo info = new VideoDownloadInfo(
                         -1, // No download ID for existing files
-                        "local", // Use "local" as courseId for offline files
-                        sectionId,
-                        "Video téléchargée", // Generic title
+                        uniqueId, // Use unique ID as courseId
+                        uniqueId, // Use same ID as sectionId
+                        file.getName(), // Use filename as title
                         "local://video", // Local URL
                         file.getAbsolutePath(),
                         VideoDownloadInfo.STATUS_COMPLETED
                     );
+                    info.setLocalPath(file.getAbsolutePath());
                     
                     // Add to completed downloads
-                    String fileKey = generateFileKey("local", sectionId);
+                    String fileKey = generateFileKey(uniqueId, uniqueId);
                     completedDownloads.put(fileKey, info);
-                    Log.d(TAG, "Found downloaded video: " + fileName);
+                    Log.d(TAG, "Found video file: " + file.getName() + " at " + file.getAbsolutePath());
                 } catch (Exception e) {
                     Log.e(TAG, "Error processing video file: " + file.getName(), e);
                 }
@@ -458,9 +460,20 @@ public class VideoDownloadManager {
         
         // Update live data
         updateLiveData();
-        
-        // Also check Firebase for additional download records
-        loadDownloadsFromFirebase();
+    }
+    
+    /**
+     * Check if a file is a video file based on its extension
+     */
+    private boolean isVideoFile(String fileName) {
+        String[] videoExtensions = {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v"};
+        fileName = fileName.toLowerCase();
+        for (String extension : videoExtensions) {
+            if (fileName.endsWith(extension)) {
+                return true;
+            }
+        }
+        return false;
     }
     
     /**

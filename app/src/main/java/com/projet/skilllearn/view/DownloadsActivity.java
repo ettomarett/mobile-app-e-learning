@@ -3,6 +3,7 @@ package com.projet.skilllearn.view;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -88,9 +89,18 @@ public class DownloadsActivity extends AppCompatActivity implements DownloadedVi
         }
         
         // Show loading state
-        emptyView.setText(R.string.no_downloads_yet);
+        emptyView.setText(R.string.loading_downloads);
         emptyView.setVisibility(View.VISIBLE);
         recyclerView.setVisibility(View.GONE);
+        
+        // Verify the movies directory exists
+        File moviesDir = getExternalFilesDir(Environment.DIRECTORY_MOVIES);
+        if (moviesDir == null || !moviesDir.exists()) {
+            if (moviesDir != null) {
+                moviesDir.mkdirs();
+            }
+            Log.d(TAG, "Created movies directory");
+        }
         
         // Observe the download status
         downloadManager.getDownloadStatus().observe(this, downloadInfoMap -> {
@@ -104,6 +114,10 @@ public class DownloadsActivity extends AppCompatActivity implements DownloadedVi
                         File file = new File(info.getLocalPath());
                         if (file.exists() && file.length() > 0) {
                             downloadedVideos.add(info);
+                            Log.d(TAG, "Found valid downloaded video: " + info.getTitle() + 
+                                  " at " + info.getLocalPath());
+                        } else {
+                            Log.d(TAG, "Invalid or missing video file: " + info.getLocalPath());
                         }
                     }
                 }
@@ -113,6 +127,7 @@ public class DownloadsActivity extends AppCompatActivity implements DownloadedVi
             if (downloadedVideos.isEmpty()) {
                 recyclerView.setVisibility(View.GONE);
                 emptyView.setVisibility(View.VISIBLE);
+                emptyView.setText(R.string.no_downloads_yet);
             } else {
                 recyclerView.setVisibility(View.VISIBLE);
                 emptyView.setVisibility(View.GONE);
@@ -123,23 +138,16 @@ public class DownloadsActivity extends AppCompatActivity implements DownloadedVi
     
     @Override
     public void onPlayVideo(VideoDownloadManager.VideoDownloadInfo video) {
-        // Open the video in course player or a standalone player
-        if (video.getCourseId() != null && !video.getCourseId().isEmpty()) {
-            // Open in course player
-            Intent intent = new Intent(this, CoursePlayerActivity.class);
-            intent.putExtra("courseId", video.getCourseId());
-            intent.putExtra("sectionId", video.getSectionId());
+        // Open video in default video player
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            Uri videoUri = Uri.parse(video.getLocalPath());
+            intent.setDataAndType(videoUri, "video/*");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(intent);
-        } else {
-            // Open in default video player
-            try {
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setDataAndType(Uri.parse(video.getLocalPath()), "video/*");
-                startActivity(intent);
-            } catch (Exception e) {
-                Log.e(TAG, "Error opening video", e);
-                Toast.makeText(this, "Impossible d'ouvrir la vidéo", Toast.LENGTH_SHORT).show();
-            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error opening video", e);
+            Toast.makeText(this, "Impossible d'ouvrir la vidéo", Toast.LENGTH_SHORT).show();
         }
     }
     

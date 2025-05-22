@@ -119,5 +119,7 @@
 
     <string name="offline_mode">Accéder mode hors ligne</string>
 
+    <string name="loading_downloads">Chargement des téléchargements...</string>
+
 </resources>
 
