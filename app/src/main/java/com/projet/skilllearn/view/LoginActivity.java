@@ -21,7 +21,7 @@ import androidx.appcompat.app.AlertDialog;
 
 public class LoginActivity extends AppCompatActivity {
     private EditText etEmail, etPassword;
-    private Button btnLogin, btnRegister;
+    private Button btnLogin, btnRegister, btnOfflineMode;
     private ProgressBar progressBar;
     private com.projet.skilllearn.viewmodel.AuthViewModel viewModel;
 
@@ -44,6 +44,7 @@ public class LoginActivity extends AppCompatActivity {
         etPassword = findViewById(R.id.et_password);
         btnLogin = findViewById(R.id.btn_login);
         btnRegister = findViewById(R.id.btn_register);
+        btnOfflineMode = findViewById(R.id.btn_offline_mode);
         progressBar = findViewById(R.id.progress_bar);
 
         // Initialiser le ViewModel
@@ -52,10 +53,6 @@ public class LoginActivity extends AppCompatActivity {
         setupObservers();
         setupClickListeners();
     }
-
-
-
-
 
     private void setupClickListeners() {
         btnLogin.setOnClickListener(v -> {
@@ -79,6 +76,15 @@ public class LoginActivity extends AppCompatActivity {
         btnRegister.setOnClickListener(v -> {
             Log.d("LoginActivity", "Clic sur le bouton Register");
             showRegisterDialog();
+        });
+
+        btnOfflineMode.setOnClickListener(v -> {
+            Log.d("LoginActivity", "Clic sur le bouton Mode hors ligne");
+            // Start MainActivity directly with offline mode
+            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+            intent.putExtra("offline_mode", true);
+            startActivity(intent);
+            finish();
         });
     }
 

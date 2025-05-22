@@ -29,4 +29,10 @@
         android:label="Profil"
         tools:layout="@layout/fragment_profile" />
 
+    <fragment
+        android:id="@+id/nav_downloads"
+        android:name="com.projet.skilllearn.view.fragments.DownloadsFragment"
+        android:label="Téléchargements"
+        tools:layout="@layout/fragment_downloads" />
+
 </navigation> 

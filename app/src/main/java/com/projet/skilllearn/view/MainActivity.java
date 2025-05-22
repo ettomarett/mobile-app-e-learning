@@ -1,5 +1,6 @@
 package com.projet.skilllearn.view;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -22,11 +23,16 @@ public class MainActivity extends AppCompatActivity {
     private NavController navController;
     private BottomNavigationView bottomNavigationView;
     private AppBarConfiguration appBarConfiguration;
+    private boolean isOfflineMode = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         try {
+            // Check if we're in offline mode
+            isOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
+            Log.d(TAG, "Offline mode: " + isOfflineMode);
+
             // Set content view first
             setContentView(R.layout.activity_main);
             Log.d(TAG, "Content view set");
@@ -57,13 +63,21 @@ public class MainActivity extends AppCompatActivity {
                 
                 Log.d(TAG, "NavController initialized");
                 
-                // Define top level destinations
-                appBarConfiguration = new AppBarConfiguration.Builder(
-                        R.id.nav_home,
-                        R.id.nav_catalog,
-                        R.id.nav_assistant,
-                        R.id.nav_profile
-                ).build();
+                // If in offline mode, hide all menu items except downloads
+                if (isOfflineMode) {
+                    bottomNavigationView.getMenu().clear();
+                    bottomNavigationView.inflateMenu(R.menu.bottom_nav_menu_offline);
+                    // Navigate directly to downloads fragment
+                    navController.navigate(R.id.nav_downloads);
+                } else {
+                    // Define top level destinations for online mode
+                    appBarConfiguration = new AppBarConfiguration.Builder(
+                            R.id.nav_home,
+                            R.id.nav_catalog,
+                            R.id.nav_assistant,
+                            R.id.nav_profile
+                    ).build();
+                }
                 Log.d(TAG, "AppBarConfiguration created");
                 
                 // Connect bottom navigation with nav controller
@@ -102,6 +116,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onSupportNavigateUp() {
         try {
+            if (isOfflineMode) {
+                // In offline mode, navigate back to login screen
+                startActivity(new Intent(this, LoginActivity.class));
+                finish();
+                return true;
+            }
             return NavigationUI.navigateUp(navController, appBarConfiguration) 
                 || super.onSupportNavigateUp();
         } catch (Exception e) {

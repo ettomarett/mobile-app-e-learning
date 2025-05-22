@@ -107,11 +107,11 @@ dependencies {
     implementation("com.google.android.exoplayer:exoplayer-core:2.19.1")
     implementation("com.google.android.exoplayer:exoplayer-ui:2.19.1")
 
-    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:11.1.0")
+    // Remove duplicate and keep only the latest version
+    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.0")
     // RecyclerView
     implementation("androidx.recyclerview:recyclerview:1.3.0")
     implementation("com.squareup.picasso:picasso:2.8")
-// CardView
+    // CardView
     implementation("androidx.cardview:cardview:1.0.0")
-    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.0")
 }

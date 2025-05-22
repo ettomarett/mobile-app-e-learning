@@ -292,7 +292,7 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             return;
         }
 
-        CourseSection section = sections.get(index);
+        CourseSection section = sections.get(currentSectionIndex);
         currentSectionIndex = index;
 
         if (rvSections.getAdapter() instanceof CourseSectionAdapter) {
@@ -309,11 +309,15 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         // Charger la vidéo si disponible
         String videoUrl = section.getVideoUrl();
         if (videoUrl != null && !videoUrl.isEmpty()) {
+            videoContainer.setVisibility(View.VISIBLE);
             if (videoUrl.contains("youtube.com") || videoUrl.contains("youtu.be")) {
                 setupYouTubePlayer(videoUrl);
             } else {
                 setupExoPlayer(videoUrl);
             }
+        } else {
+            videoContainer.setVisibility(View.GONE);
+            stopAllPlayers();
         }
 
         // Mettre à jour les boutons de navigation
@@ -322,7 +326,54 @@ public class CoursePlayerActivity extends AppCompatActivity implements
     }
 
     private void setupYouTubePlayer(String videoUrl) {
-        // Implementation of setupYouTubePlayer method
+        // Arrêter d'abord tous les lecteurs
+        stopAllPlayers();
+
+        playerView.setVisibility(View.GONE);
+        youtubePlayerContainer.setVisibility(View.VISIBLE);
+
+        String videoId = getYouTubeVideoId(videoUrl);
+        if (videoId == null) {
+            Toast.makeText(this, "ID de vidéo YouTube invalide", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Créer et initialiser le lecteur YouTube
+        if (youtubePlayerView == null) {
+            youtubePlayerView = new YouTubePlayerView(this);
+            youtubePlayerContainer.removeAllViews(); // Assurez-vous que le conteneur est vide
+            youtubePlayerContainer.addView(youtubePlayerView);
+            getLifecycle().addObserver(youtubePlayerView);
+
+            youtubePlayerView.addYouTubePlayerListener(new AbstractYouTubePlayerListener() {
+                @Override
+                public void onReady(@NonNull YouTubePlayer player) {
+                    youTubePlayer = player;
+                    player.loadVideo(videoId, 0);
+                }
+
+                @Override
+                public void onStateChange(@NonNull YouTubePlayer player, @NonNull PlayerConstants.PlayerState state) {
+                    if (state == PlayerConstants.PlayerState.ENDED) {
+                        videoCompleted = true;
+                        updateCompleteButtonState();
+                        showVideoCompletedDialog();
+                    }
+                }
+
+                @Override
+                public void onError(@NonNull YouTubePlayer player, @NonNull PlayerConstants.PlayerError error) {
+                    Log.e(TAG, "YouTube player error: " + error.name());
+                    Toast.makeText(CoursePlayerActivity.this, 
+                        "Erreur lors de la lecture de la vidéo: " + error.name(), 
+                        Toast.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            if (youTubePlayer != null) {
+                youTubePlayer.loadVideo(videoId, 0);
+            }
+        }
     }
 
     private void setupExoPlayer(String videoUrl) {
@@ -332,8 +383,18 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         playerView.setVisibility(View.VISIBLE);
         youtubePlayerContainer.setVisibility(View.GONE);
 
-        MediaItem mediaItem = MediaItem.fromUri(Uri.parse(videoUrl));
-        player.setMediaItem(mediaItem);
+        // Vérifier si la vidéo est disponible hors ligne
+        String localPath = downloadManager.getLocalVideoPath(courseId, sections.get(currentSectionIndex).getSectionId());
+        if (localPath != null && new File(localPath).exists()) {
+            // Charger la vidéo locale
+            MediaItem mediaItem = MediaItem.fromUri(Uri.fromFile(new File(localPath)));
+            player.setMediaItem(mediaItem);
+        } else {
+            // Charger la vidéo depuis l'URL
+            MediaItem mediaItem = MediaItem.fromUri(Uri.parse(videoUrl));
+            player.setMediaItem(mediaItem);
+        }
+        
         player.prepare();
         player.play();
     }
@@ -374,6 +435,7 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         // Arrêter ExoPlayer
         if (player != null) {
             player.stop();
+            player.clearMediaItems();
         }
 
         // Arrêter YouTube Player
