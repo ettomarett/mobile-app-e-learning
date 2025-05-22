@@ -152,6 +152,8 @@ public class DownloadsActivity extends AppCompatActivity implements DownloadedVi
             intent.putExtra("videoUri", videoUri.toString());
             intent.putExtra("isLocalFile", true);
             intent.putExtra("title", video.getTitle());
+            intent.putExtra("courseId", video.getCourseId());
+            intent.putExtra("sectionId", video.getSectionId());
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(intent);
         } catch (Exception e) {

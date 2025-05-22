@@ -103,8 +103,10 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         // Récupérer les identifiants depuis l'intent
         courseId = getIntent().getStringExtra("courseId");
         sectionId = getIntent().getStringExtra("sectionId");
+        boolean isLocalFile = getIntent().getBooleanExtra("isLocalFile", false);
 
-        if (courseId == null) {
+        // Only validate courseId if not playing a local file
+        if (!isLocalFile && courseId == null) {
             Toast.makeText(this, "Erreur: ID de cours manquant", Toast.LENGTH_SHORT).show();
             finish();
             return;
@@ -126,8 +128,21 @@ public class CoursePlayerActivity extends AppCompatActivity implements
         // Initialiser les lecteurs vidéo
         initializePlayer();
 
-        // Configurer les onglets et ViewPager
-        setupViewPager();
+        // Only set up course-related UI if not playing a local file
+        if (!isLocalFile) {
+            // Configurer les onglets et ViewPager
+            setupViewPager();
+            
+            // Observer les données du ViewModel
+            observeViewModel();
+
+            // Observer les statuts de téléchargement
+            observeDownloadStatus();
+
+            // Charger le cours
+            viewModel.selectCourse(courseId);
+        }
+
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
@@ -136,14 +151,6 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setDisplayShowHomeEnabled(true);
         }
-        // Observer les données du ViewModel
-        observeViewModel();
-
-        // Observer les statuts de téléchargement
-        observeDownloadStatus();
-
-        // Charger le cours
-        viewModel.selectCourse(courseId);
     }
 
     private void initViews() {
@@ -159,13 +166,24 @@ public class CoursePlayerActivity extends AppCompatActivity implements
             tabLayout = findViewById(R.id.tab_layout);
             rvSections = findViewById(R.id.rv_sections);
 
-            // Configurer RecyclerView avec orientation horizontale comme spécifié dans le XML
-            rvSections.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+            // Hide course-related UI elements if playing a local file
+            boolean isLocalFile = getIntent().getBooleanExtra("isLocalFile", false);
+            if (isLocalFile) {
+                if (btnPrevious != null) btnPrevious.setVisibility(View.GONE);
+                if (btnNext != null) btnNext.setVisibility(View.GONE);
+                if (btnMarkComplete != null) btnMarkComplete.setVisibility(View.GONE);
+                if (viewPager != null) viewPager.setVisibility(View.GONE);
+                if (tabLayout != null) tabLayout.setVisibility(View.GONE);
+                if (rvSections != null) rvSections.setVisibility(View.GONE);
+            } else {
+                // Configurer RecyclerView avec orientation horizontale comme spécifié dans le XML
+                rvSections.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
 
-            // Configurer les listeners
-            btnPrevious.setOnClickListener(v -> navigateToPreviousSection());
-            btnNext.setOnClickListener(v -> navigateToNextSection());
-            btnMarkComplete.setOnClickListener(v -> markSectionAsCompleted());
+                // Configurer les listeners
+                btnPrevious.setOnClickListener(v -> navigateToPreviousSection());
+                btnNext.setOnClickListener(v -> navigateToNextSection());
+                btnMarkComplete.setOnClickListener(v -> markSectionAsCompleted());
+            }
         } catch (Exception e) {
             Toast.makeText(this, "Erreur d'initialisation: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             finish();
