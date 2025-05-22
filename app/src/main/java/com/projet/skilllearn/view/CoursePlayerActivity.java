@@ -46,7 +46,6 @@ import com.projet.skilllearn.view.fragments.ContentFragment;
 import com.projet.skilllearn.view.fragments.QuizFragment;
 import com.projet.skilllearn.viewmodel.CourseViewModel;
 import com.projet.skilllearn.utils.VideoDownloadManager;
-import com.projet.skilllearn.utils.HeadlessDownloadService;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.widget.Button;
@@ -800,30 +799,14 @@ public class CoursePlayerActivity extends AppCompatActivity implements
      * Ouvre le service de téléchargement en arrière-plan pour YouTube
      */
     private void openYouTubeDownloadDialog(String youtubeUrl, CourseSection section) {
-        // Option 1: Headless download (préféré)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            // Create and start the headless download service
-            Intent intent = new Intent(this, HeadlessDownloadService.class);
-            intent.setAction(HeadlessDownloadService.ACTION_START_DOWNLOAD);
-            intent.putExtra(HeadlessDownloadService.EXTRA_YOUTUBE_URL, youtubeUrl);
-            intent.putExtra(HeadlessDownloadService.EXTRA_COURSE_ID, courseId);
-            intent.putExtra(HeadlessDownloadService.EXTRA_SECTION_ID, section.getSectionId());
-            intent.putExtra(HeadlessDownloadService.EXTRA_TITLE, section.getTitle());
-            
-            startForegroundService(intent);
-            
-            // Show confirmation toast
-            Toast.makeText(this, "Téléchargement démarré en arrière-plan", Toast.LENGTH_SHORT).show();
-        } else {
-            // Fallback to dialog for older Android versions
-            YouTubeDownloadDialog dialog = YouTubeDownloadDialog.newInstance(
-                youtubeUrl,
-                courseId,
-                section.getSectionId(),
-                section.getTitle()
-            );
-            dialog.show(getSupportFragmentManager(), "youtube_download_dialog");
-        }
+        // Use dialog-based approach only
+        YouTubeDownloadDialog dialog = YouTubeDownloadDialog.newInstance(
+            youtubeUrl,
+            courseId,
+            section.getSectionId(),
+            section.getTitle()
+        );
+        dialog.show(getSupportFragmentManager(), "youtube_download_dialog");
     }
     
     /**
