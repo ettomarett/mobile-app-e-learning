@@ -33,6 +33,14 @@ public class MainActivity extends AppCompatActivity {
             isOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
             Log.d(TAG, "Offline mode: " + isOfflineMode);
 
+            if (isOfflineMode) {
+                // If in offline mode, go directly to DownloadsActivity
+                Intent intent = new Intent(this, DownloadsActivity.class);
+                startActivity(intent);
+                finish();
+                return;
+            }
+
             // Set content view first
             setContentView(R.layout.activity_main);
             Log.d(TAG, "Content view set");
@@ -63,21 +71,14 @@ public class MainActivity extends AppCompatActivity {
                 
                 Log.d(TAG, "NavController initialized");
                 
-                // If in offline mode, hide all menu items except downloads
-                if (isOfflineMode) {
-                    bottomNavigationView.getMenu().clear();
-                    bottomNavigationView.inflateMenu(R.menu.bottom_nav_menu_offline);
-                    // Navigate directly to downloads fragment
-                    navController.navigate(R.id.nav_downloads);
-                } else {
-                    // Define top level destinations for online mode
-                    appBarConfiguration = new AppBarConfiguration.Builder(
-                            R.id.nav_home,
-                            R.id.nav_catalog,
-                            R.id.nav_assistant,
-                            R.id.nav_profile
-                    ).build();
-                }
+                // Define top level destinations
+                appBarConfiguration = new AppBarConfiguration.Builder(
+                        R.id.nav_home,
+                        R.id.nav_catalog,
+                        R.id.nav_assistant,
+                        R.id.nav_profile
+                ).build();
+                
                 Log.d(TAG, "AppBarConfiguration created");
                 
                 // Connect bottom navigation with nav controller
@@ -116,12 +117,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onSupportNavigateUp() {
         try {
-            if (isOfflineMode) {
-                // In offline mode, navigate back to login screen
-                startActivity(new Intent(this, LoginActivity.class));
-                finish();
-                return true;
-            }
             return NavigationUI.navigateUp(navController, appBarConfiguration) 
                 || super.onSupportNavigateUp();
         } catch (Exception e) {

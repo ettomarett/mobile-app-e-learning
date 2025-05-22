@@ -1,6 +1,7 @@
 package com.projet.skilllearn.view;
 
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -491,8 +492,19 @@ public class CoursePlayerActivity extends AppCompatActivity implements
     }
 
     private void updateCompleteButtonState() {
-        // Enable the button regardless of video completion status
-        btnMarkComplete.setEnabled(true);
+        if (btnMarkComplete != null) {
+            if (videoCompleted) {
+                btnMarkComplete.setIcon(getDrawable(R.drawable.ic_check_circle));
+                btnMarkComplete.setText(R.string.section_completed);
+                btnMarkComplete.setEnabled(false);
+                btnMarkComplete.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.colorSuccess)));
+            } else {
+                btnMarkComplete.setIcon(getDrawable(R.drawable.ic_check_circle));
+                btnMarkComplete.setText(R.string.mark_complete);
+                btnMarkComplete.setEnabled(true);
+                btnMarkComplete.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.colorPrimary)));
+            }
+        }
     }
 
     private void navigateToPreviousSection() {

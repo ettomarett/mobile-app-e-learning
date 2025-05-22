@@ -54,10 +54,16 @@ public class DownloadedVideoAdapter extends RecyclerView.Adapter<DownloadedVideo
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         VideoDownloadManager.VideoDownloadInfo video = videos.get(position);
         
+        // Set title
         holder.tvTitle.setText(video.getTitle());
         
-        // Set course and section info
-        String courseInfo = "Cours: " + video.getCourseId();
+        // Set course info
+        String courseInfo;
+        if ("local".equals(video.getCourseId())) {
+            courseInfo = "Vidéo téléchargée localement";
+        } else {
+            courseInfo = "Cours: " + video.getCourseId();
+        }
         holder.tvCourseInfo.setText(courseInfo);
         
         // Get file info

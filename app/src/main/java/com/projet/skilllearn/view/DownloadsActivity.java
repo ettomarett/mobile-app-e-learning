@@ -62,21 +62,35 @@ public class DownloadsActivity extends AppCompatActivity implements DownloadedVi
         adapter = new DownloadedVideoAdapter(this, new ArrayList<>(), this);
         recyclerView.setAdapter(adapter);
         
-        // Get download manager instance
+        // Get download manager instance and initialize it
         downloadManager = VideoDownloadManager.getInstance(this);
         
         // Load downloaded videos
         loadDownloadedVideos();
     }
     
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Reload videos when returning to the activity
+        loadDownloadedVideos();
+    }
+    
     private void loadDownloadedVideos() {
-        // Check if user is logged in
+        // In offline mode, don't check for user login
+        boolean isOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) {
+        
+        if (!isOfflineMode && user == null) {
             Toast.makeText(this, "Vous devez être connecté pour voir vos téléchargements", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
+        
+        // Show loading state
+        emptyView.setText(R.string.no_downloads_yet);
+        emptyView.setVisibility(View.VISIBLE);
+        recyclerView.setVisibility(View.GONE);
         
         // Observe the download status
         downloadManager.getDownloadStatus().observe(this, downloadInfoMap -> {
@@ -155,6 +169,15 @@ public class DownloadsActivity extends AppCompatActivity implements DownloadedVi
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
+            // If in offline mode, go back to login screen
+            boolean isOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
+            if (isOfflineMode) {
+                Intent intent = new Intent(this, LoginActivity.class);
+                startActivity(intent);
+                finish();
+                return true;
+            }
+            // Otherwise, normal back navigation
             onBackPressed();
             return true;
         }

@@ -415,16 +415,51 @@ public class VideoDownloadManager {
         // Get the movies directory
         File moviesDir = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES);
         if (moviesDir == null || !moviesDir.exists()) {
+            Log.d(TAG, "Movies directory does not exist");
             return;
         }
         
         // Look for downloaded files
         File[] files = moviesDir.listFiles();
         if (files == null) {
+            Log.d(TAG, "No files found in movies directory");
             return;
         }
+
+        // Scan for video files
+        for (File file : files) {
+            if (file.isFile() && file.getName().endsWith(".mp4")) {
+                try {
+                    // Try to parse the filename to get courseId and sectionId
+                    // Expected format: sectionId.mp4
+                    String fileName = file.getName();
+                    String sectionId = fileName.substring(0, fileName.length() - 4); // Remove .mp4
+                    
+                    // Create a download info object
+                    VideoDownloadInfo info = new VideoDownloadInfo(
+                        -1, // No download ID for existing files
+                        "local", // Use "local" as courseId for offline files
+                        sectionId,
+                        "Video téléchargée", // Generic title
+                        "local://video", // Local URL
+                        file.getAbsolutePath(),
+                        VideoDownloadInfo.STATUS_COMPLETED
+                    );
+                    
+                    // Add to completed downloads
+                    String fileKey = generateFileKey("local", sectionId);
+                    completedDownloads.put(fileKey, info);
+                    Log.d(TAG, "Found downloaded video: " + fileName);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error processing video file: " + file.getName(), e);
+                }
+            }
+        }
         
-        // Check Firebase for download records
+        // Update live data
+        updateLiveData();
+        
+        // Also check Firebase for additional download records
         loadDownloadsFromFirebase();
     }
     
@@ -434,6 +469,7 @@ public class VideoDownloadManager {
     private void loadDownloadsFromFirebase() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
+            Log.d(TAG, "No user logged in, skipping Firebase download check");
             return;
         }
         
@@ -448,6 +484,7 @@ public class VideoDownloadManager {
                     
                     for (com.google.firebase.database.DataSnapshot sectionSnapshot : courseSnapshot.getChildren()) {
                         String sectionId = sectionSnapshot.getKey();
+                        String fileKey = generateFileKey(courseId, sectionId);
                         
                         // Check if file exists
                         String fileName = sectionId + ".mp4";
@@ -456,16 +493,17 @@ public class VideoDownloadManager {
                         if (file.exists() && file.length() > 0) {
                             // Create download info
                             VideoDownloadInfo info = new VideoDownloadInfo(
-                                    -1, courseId, sectionId, "Downloaded Video", 
+                                    -1, courseId, sectionId, "Vidéo du cours", 
                                     "", file.getAbsolutePath(), VideoDownloadInfo.STATUS_COMPLETED
                             );
                             
                             // Add to completed downloads
-                            String fileKey = generateFileKey(courseId, sectionId);
                             completedDownloads.put(fileKey, info);
+                            Log.d(TAG, "Found Firebase video record: " + fileKey);
                         } else {
                             // File is missing, remove from Firebase
                             sectionSnapshot.getRef().removeValue();
+                            Log.d(TAG, "Removing missing video from Firebase: " + fileKey);
                         }
                     }
                 }
@@ -473,6 +511,8 @@ public class VideoDownloadManager {
                 // Update live data
                 updateLiveData();
             }
+        }).addOnFailureListener(e -> {
+            Log.e(TAG, "Error loading downloads from Firebase", e);
         });
     }
     
