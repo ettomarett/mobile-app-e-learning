@@ -5,7 +5,9 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,6 +16,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -122,6 +125,54 @@ public class YouTubeDownloadDialog extends DialogFragment {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 progressBar.setVisibility(View.GONE);
+                
+                // If we're on the ytmp3.la page, inject the YouTube URL and select MP4
+                if (url.contains("ytmp3.la")) {
+                    // Inject the YouTube URL into the input field, select MP4 format, and submit
+                    String js = "javascript:(function() {" +
+                                "document.getElementById('v').value = '" + youtubeUrl + "';" +
+                                "var formatBtn = document.getElementById('f');" +
+                                "if(formatBtn && formatBtn.innerText === 'MP3') {" +
+                                "  formatBtn.click();" + // This should toggle to MP4
+                                "}" +
+                                "})()";
+                    
+                    // Execute after a short delay to ensure the page is fully loaded
+                    new Handler().postDelayed(() -> {
+                        webView.evaluateJavascript(js, null);
+                        
+                        // Add a floating action button to submit the form
+                        if (getActivity() != null) {
+                            getActivity().runOnUiThread(() -> {
+                                View submitButtonContainer = getLayoutInflater().inflate(R.layout.auto_submit_button, null);
+                                Button autoSubmitButton = submitButtonContainer.findViewById(R.id.auto_submit_button);
+                                
+                                // Position the button on the screen
+                                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                                        ViewGroup.LayoutParams.WRAP_CONTENT, 
+                                        ViewGroup.LayoutParams.WRAP_CONTENT
+                                );
+                                params.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+                                params.bottomMargin = 48;
+                                submitButtonContainer.setLayoutParams(params);
+                                
+                                // Add click listener to submit the form
+                                autoSubmitButton.setOnClickListener(v -> {
+                                    String submitJs = "javascript:(function() {" +
+                                                     "document.querySelector('button[type=\"submit\"]').click();" +
+                                                     "})()";
+                                    webView.evaluateJavascript(submitJs, null);
+                                    
+                                    // Remove the button after clicking
+                                    ((ViewGroup) submitButtonContainer.getParent()).removeView(submitButtonContainer);
+                                });
+                                
+                                // Add the button to the dialog
+                                ((ViewGroup) webView.getParent()).addView(submitButtonContainer);
+                            });
+                        }
+                    }, 1000);
+                }
             }
         });
         
@@ -134,11 +185,8 @@ public class YouTubeDownloadDialog extends DialogFragment {
             startCheckingDownloads();
         });
         
-        // Convert YouTube URL to downloader URL by adding "ss" after "www."
-        String modifiedUrl = youtubeUrl.replace("www.youtube.com", "www.ssyoutube.com");
-        
-        // Load the modified URL
-        webView.loadUrl(modifiedUrl);
+        // Load the ytmp3.la site
+        webView.loadUrl("https://ytmp3.la/");
     }
     
     private void startCheckingDownloads() {
