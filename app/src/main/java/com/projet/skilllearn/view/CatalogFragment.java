@@ -197,11 +197,11 @@ public class CatalogFragment extends Fragment implements CourseAdapter.OnCourseC
                 rvCourses.setAdapter(adapter);
                 rvCourses.setVisibility(View.VISIBLE);
                 tvEmptyView.setVisibility(View.GONE);
-                view.findViewById(R.id.tv_generate_course).setVisibility(View.GONE);
+                requireView().findViewById(R.id.tv_generate_course).setVisibility(View.GONE);
             } else {
                 rvCourses.setVisibility(View.GONE);
                 tvEmptyView.setVisibility(View.VISIBLE);
-                view.findViewById(R.id.tv_generate_course).setVisibility(View.VISIBLE);
+                requireView().findViewById(R.id.tv_generate_course).setVisibility(View.VISIBLE);
                 tvEmptyView.setText("Aucun cours trouvé pour votre recherche");
             }
         });

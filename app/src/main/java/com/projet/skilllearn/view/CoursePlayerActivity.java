@@ -173,9 +173,44 @@ public class CoursePlayerActivity extends AppCompatActivity implements
     }
 
     private void initializePlayer() {
-        player = new ExoPlayer.Builder(this).build();
-        playerView.setPlayer(player);
-        player.addListener(this);
+        if (player == null) {
+            // Initialize the player
+            player = new ExoPlayer.Builder(this).build();
+            playerView.setPlayer(player);
+        }
+
+        // Check if we're playing a local file
+        String videoUriString = getIntent().getStringExtra("videoUri");
+        boolean isLocalFile = getIntent().getBooleanExtra("isLocalFile", false);
+        String title = getIntent().getStringExtra("title");
+
+        if (isLocalFile && videoUriString != null) {
+            // Playing a local video file
+            try {
+                Uri videoUri = Uri.parse(videoUriString);
+                MediaItem mediaItem = MediaItem.fromUri(videoUri);
+                player.setMediaItem(mediaItem);
+                player.prepare();
+                player.setPlayWhenReady(true);
+
+                // Update UI for local video playback
+                if (getSupportActionBar() != null && title != null) {
+                    getSupportActionBar().setTitle(title);
+                }
+                // Hide unnecessary UI elements
+                btnMarkComplete.setVisibility(View.GONE);
+                btnDownloadVideo.setVisibility(View.GONE);
+            } catch (Exception e) {
+                Log.e(TAG, "Error playing local video: " + e.getMessage());
+                Toast.makeText(this, "Erreur lors de la lecture de la vidéo", Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        } else {
+            // Normal course video playback
+            if (sections != null && !sections.isEmpty()) {
+                loadSection(currentSectionIndex);
+            }
+        }
     }
 
     private void setupViewPager() {
@@ -583,18 +618,16 @@ public class CoursePlayerActivity extends AppCompatActivity implements
     @Override
     protected void onResume() {
         super.onResume();
-        // Reprendre la lecture vidéo si nécessaire
-        if (playerView.getVisibility() == View.VISIBLE && !player.isPlaying()) {
-            player.play();
+        if (player != null) {
+            player.setPlayWhenReady(true);
         }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        // Mettre en pause la lecture vidéo
-        if (player.isPlaying()) {
-            player.pause();
+        if (player != null) {
+            player.setPlayWhenReady(false);
         }
 
         // Mettre en pause YouTube si actif
@@ -606,7 +639,6 @@ public class CoursePlayerActivity extends AppCompatActivity implements
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Libérer les ressources du lecteur
         if (player != null) {
             player.release();
             player = null;
