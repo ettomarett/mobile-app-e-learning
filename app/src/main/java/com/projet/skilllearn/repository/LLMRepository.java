@@ -124,6 +124,11 @@ public class LLMRepository {
      * @param content the LLM response content
      */
     private void processForCourseCreation(String content) {
+        // First check if this is actually a course creation request
+        if (!isExplicitCourseRequest(content)) {
+            return;
+        }
+
         // Check if the response contains a course creation request
         if (content.contains("<FirebaseCourse>") && content.contains("</FirebaseCourse>")) {
             Log.d(TAG, "Course creation detected in LLM response");
@@ -209,9 +214,17 @@ public class LLMRepository {
         systemMessage.addProperty("role", "system");
         systemMessage.addProperty("content", 
             "You are a helpful learning assistant for an e-learning app called SkillLearn. " +
-            "Provide concise, informative responses. When appropriate, include references to learning materials. " +
-            "Be friendly and encouraging.\n\n" +
-            "To create course content for the SkillLearn app, use the following syntax:\n\n" +
+            "Your primary roles are:\n" +
+            "1. Answer questions about learning and courses\n" +
+            "2. Help users find appropriate courses\n" +
+            "3. Create new courses ONLY when explicitly requested\n\n" +
+            "IMPORTANT: Only create a course when the user explicitly asks for it with phrases like:\n" +
+            "- \"Crée un cours sur...\"\n" +
+            "- \"Génère un cours pour...\"\n" +
+            "- \"Je veux un cours qui...\"\n" +
+            "- \"Peux-tu créer un cours sur...\"\n\n" +
+            "For normal conversation, just respond naturally without creating courses.\n\n" +
+            "When course creation IS requested, use this syntax:\n\n" +
             "<FirebaseCourse>\n" +
             "  <CourseDetails>\n" +
             "    title: [Course Title]\n" +
@@ -249,15 +262,13 @@ public class LLMRepository {
             "    [IMPORTANT: Each quiz MUST have at least 3 questions]\n" +
             "  </Quiz>\n" +
             "</FirebaseCourse>\n\n" +
-            "When you receive a request to create course content, generate the full course structure following this syntax. " +
             "IMPORTANT RULES:\n" +
-            "1. Each section must have a corresponding quiz with at least 3 questions\n" +
-            "2. All videoUrl fields MUST contain actual, relevant YouTube video URLs - NO PLACEHOLDERS ALLOWED\n" +
-            "3. Before including a video URL, verify that it exists and is relevant to the section content\n" +
-            "4. If you cannot find a relevant video for a section, you must search harder or modify the section to match available educational content\n" +
-            "5. For course thumbnails, ALWAYS use Unsplash.com random image URLs with relevant keywords (https://source.unsplash.com/random?keyword1,keyword2)\n" +
-            "6. DO NOT show the XML structure in your response to the user. Instead, respond naturally and process the course creation in the background.\n" +
-            "7. After generating a course, respond with a friendly message like 'Je commence à créer votre cours sur [sujet]...'"
+            "1. NEVER create a course unless explicitly requested\n" +
+            "2. Each section must have a corresponding quiz with at least 3 questions\n" +
+            "3. All videoUrl fields MUST contain actual, relevant YouTube video URLs - NO PLACEHOLDERS\n" +
+            "4. For course thumbnails, ALWAYS use Unsplash.com random image URLs with relevant keywords\n" +
+            "5. DO NOT show the XML structure in your response to the user\n" +
+            "6. After generating a course, respond with 'Je commence à créer votre cours sur [sujet]...'"
         );
         messagesArray.add(systemMessage);
         
@@ -438,5 +449,28 @@ public class LLMRepository {
      */
     public void cleanup() {
         // Nothing to clean up
+    }
+
+    private boolean isExplicitCourseRequest(String content) {
+        // List of French phrases that indicate a course creation request
+        String[] courseRequestPhrases = {
+            "crée un cours",
+            "créer un cours",
+            "génère un cours",
+            "générer un cours",
+            "je veux un cours",
+            "je voudrais un cours",
+            "peux-tu créer un cours",
+            "pourrais-tu créer un cours",
+            "faire un cours sur"
+        };
+
+        String lowerContent = content.toLowerCase();
+        for (String phrase : courseRequestPhrases) {
+            if (lowerContent.contains(phrase.toLowerCase())) {
+                return true;
+            }
+        }
+        return false;
     }
 } 
