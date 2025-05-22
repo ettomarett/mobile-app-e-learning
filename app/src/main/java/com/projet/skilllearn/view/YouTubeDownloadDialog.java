@@ -202,15 +202,20 @@ public class YouTubeDownloadDialog extends DialogFragment {
                                                      "console.log('Submitting form');" +
                                                      "var submitBtn = document.querySelector('button[type=\"submit\"]');" +
                                                      "if(submitBtn) {" +
-                                                     "  console.log('Submit button found');" +
+                                                     "  console.log('Submit button found: ' + submitBtn.innerText);" +
                                                      "  submitBtn.click();" +
                                                      "  " +
                                                      "  // Set up a timer to look for the download button" +
                                                      "  var checkInterval = setInterval(function() {" +
-                                                     "    var downloadButtons = document.querySelectorAll('button[type=\"button\"]');" +
-                                                     "    for (var i = 0; i < downloadButtons.length; i++) {" +
-                                                     "      var btn = downloadButtons[i];" +
-                                                     "      if (btn.innerText === 'Download') {" +
+                                                     "    console.log('Checking for download button...');" +
+                                                     "    var allButtons = document.querySelectorAll('button');" +
+                                                     "    console.log('Found ' + allButtons.length + ' buttons');" +
+                                                     "    for (var i = 0; i < allButtons.length; i++) {" +
+                                                     "      var btn = allButtons[i];" +
+                                                     "      console.log('Button ' + i + ' text: \"' + btn.innerText + '\"');" +
+                                                     "      if (btn.innerText.trim().toLowerCase() === 'download' || " +
+                                                     "          btn.innerText.toLowerCase().includes('download') || " +
+                                                     "          btn.innerText.toLowerCase().includes('télécharger')) {" +
                                                      "        console.log('Found download button, clicking automatically');" +
                                                      "        btn.click();" +
                                                      "        clearInterval(checkInterval);" +
@@ -218,8 +223,19 @@ public class YouTubeDownloadDialog extends DialogFragment {
                                                      "      }" +
                                                      "    }" +
                                                      "  }, 1000);" +
+                                                     "  " +
+                                                     "  // Add a timeout to stop checking after 3 minutes" +
+                                                     "  setTimeout(function() {" +
+                                                     "    clearInterval(checkInterval);" +
+                                                     "    console.log('Stopped looking for download button after timeout');" +
+                                                     "  }, 180000);" +
                                                      "} else {" +
-                                                     "  console.log('Submit button not found');" +
+                                                     "  console.log('Submit button not found!');" +
+                                                     "  var allButtons = document.querySelectorAll('button');" +
+                                                     "  console.log('All buttons found: ' + allButtons.length);" +
+                                                     "  for(var i=0; i < allButtons.length; i++) {" +
+                                                     "    console.log('Button ' + i + ': ' + allButtons[i].innerText + ', type: ' + allButtons[i].getAttribute('type'));" +
+                                                     "  }" +
                                                      "}" +
                                                      "})()";
                                     webView.evaluateJavascript(submitJs, result -> {
@@ -228,6 +244,33 @@ public class YouTubeDownloadDialog extends DialogFragment {
                                     
                                     // Keep the button visible for additional attempts
                                     Toast.makeText(getContext(), "Conversion démarrée, attendez le téléchargement automatique", Toast.LENGTH_LONG).show();
+                                    
+                                    // Change the button text to indicate it's working
+                                    autoSubmitButton.setText("Conversion en cours...");
+                                    
+                                    // Add a fallback to refresh if nothing happens after 60 seconds
+                                    new Handler().postDelayed(() -> {
+                                        if (getActivity() != null && !isDetached()) {
+                                            webView.evaluateJavascript(
+                                                "javascript:(function() { return document.querySelectorAll('button[type=\"button\"]').length; })()",
+                                                countResult -> {
+                                                    try {
+                                                        int buttonCount = Integer.parseInt(countResult);
+                                                        if (buttonCount <= 1) { // Only the original button
+                                                            Log.d(TAG, "No download button appeared after timeout, refreshing");
+                                                            webView.loadUrl("https://ytmp3.la/");
+                                                            
+                                                            // Reset the button
+                                                            autoSubmitButton.setText("Convertir la vidéo");
+                                                            Toast.makeText(getContext(), "Conversion échouée, veuillez réessayer", Toast.LENGTH_SHORT).show();
+                                                        }
+                                                    } catch (Exception e) {
+                                                        Log.e(TAG, "Error checking button count", e);
+                                                    }
+                                                }
+                                            );
+                                        }
+                                    }, 60000);
                                 });
                                 
                                 // Add a manual download instruction

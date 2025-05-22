@@ -43,6 +43,12 @@
         <activity
             android:name=".view.DownloadsActivity"
             android:label="Téléchargements" />
+            
+        <service
+            android:name=".utils.HeadlessDownloadService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
     </application>
 
 </manifest>
